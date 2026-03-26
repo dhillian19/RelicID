@@ -205,9 +205,16 @@ const F = {
 };
 const FONT_LINK = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Nunito+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap";
 
-const FREE_SCAN_LIMIT = 3;
 const CACHE_TTL_MS = 48 * 60 * 60 * 1000; // 48 hours
 const CACHE_VERSION = "v2"; // bump to invalidate old cache
+
+// ─── DEEP SCAN PRICING ───────────────────────────────────
+const DEEP_SCAN_PLANS = [
+  { id: "ds15", scans: 15, price: "$2.99", desc: "Great for quick thrift runs", stripeLink: null },
+  { id: "ds30", scans: 30, price: "$4.99", desc: "Best value for regular use", popular: true, stripeLink: null },
+  { id: "ds60", scans: 60, price: "$9.99", desc: "For serious flippers", stripeLink: null },
+];
+const FREE_DEEP_SCANS = 3; // starter credits for new users
 
 // ─── PLATFORM SEARCH LINKS ──────────────────────────────
 function buildSearchUrl(platform, query) {
@@ -304,13 +311,27 @@ function parseJson(text) {
   return null;
 }
 
-// ─── SCAN LIMIT TRACKING ───────────────────────────────────
-function getTodayKey() { return "relicid-scans-" + new Date().toISOString().slice(0, 10); }
-async function getScansToday() {
-  try { return parseInt(localStorage.getItem(getTodayKey())) || 0; } catch { return 0; }
+// ─── DEEP SCAN CREDITS ────────────────────────────────────
+function getDeepScanCredits() {
+  try {
+    const raw = localStorage.getItem("relicid-deep-credits");
+    if (raw == null) { localStorage.setItem("relicid-deep-credits", String(FREE_DEEP_SCANS)); return FREE_DEEP_SCANS; }
+    return parseInt(raw) || 0;
+  } catch { return 0; }
 }
-async function incrementScans() {
-  try { const c = await getScansToday(); localStorage.setItem(getTodayKey(), String(c + 1)); return c + 1; } catch { return 1; }
+function setDeepScanCredits(n) {
+  try { localStorage.setItem("relicid-deep-credits", String(Math.max(0, n))); } catch {}
+}
+function deductDeepScan() {
+  const current = getDeepScanCredits();
+  if (current <= 0) return false;
+  setDeepScanCredits(current - 1);
+  return true;
+}
+function addDeepScans(count) {
+  const current = getDeepScanCredits();
+  setDeepScanCredits(current + count);
+  return current + count;
 }
 
 // ─── RESULT CACHE ──────────────────────────────────────────
@@ -558,8 +579,62 @@ function ResultCard({ item, compact, onClick }) {
   );
 }
 
+// ─── PAYWALL MODAL ────────────────────────────────────────
+function PaywallModal({ onClose, onPurchase, remaining }) {
+  const [selected, setSelected] = useState("ds30");
+  const selectedPlan = DEEP_SCAN_PLANS.find(p => p.id === selected);
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.7)" }} />
+      <div style={{ position: "relative", width: "100%", maxWidth: 420, background: C.bg, borderRadius: 16, border: `1px solid ${C.border}`, padding: "32px 24px", maxHeight: "90vh", overflowY: "auto" }}>
+        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", color: C.textMuted, fontSize: 20, cursor: "pointer" }}>×</button>
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div style={{ fontSize: 28, marginBottom: 8 }}>🔬</div>
+          <h2 style={{ fontFamily: F.display, fontSize: 24, fontWeight: 700, color: C.text, margin: "0 0 6px" }}>Keep Finding Profitable Deals</h2>
+          <p style={{ fontSize: 13, color: C.textDim, margin: 0 }}>Run full analysis to see real value, recent sales, and flip potential</p>
+          {remaining != null && <div style={{ fontSize: 12, fontFamily: F.mono, color: remaining > 0 ? C.textMuted : C.danger, marginTop: 8 }}>{remaining > 0 ? `${remaining} deep scan${remaining !== 1 ? "s" : ""} remaining` : "No deep scans remaining"}</div>}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+          {DEEP_SCAN_PLANS.map(plan => (
+            <div key={plan.id} onClick={() => setSelected(plan.id)} style={{ padding: "16px 18px", background: selected === plan.id ? C.accentGlow : C.bgCard, borderRadius: 12, border: selected === plan.id ? `2px solid ${C.accent}` : `1px solid ${C.border}`, cursor: "pointer", position: "relative", transition: "all 0.2s" }}>
+              {plan.popular && <div style={{ position: "absolute", top: -10, right: 16, fontSize: 10, fontFamily: F.mono, padding: "2px 10px", borderRadius: 10, background: C.accent, color: C.bg, fontWeight: 700, letterSpacing: 0.5 }}>MOST POPULAR</div>}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                <div>
+                  <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 600, color: C.text }}>{plan.scans} Deep Scans</div>
+                  <div style={{ fontSize: 12, color: C.textDim, marginTop: 2 }}>{plan.desc}</div>
+                </div>
+                <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 700, color: C.accent }}>{plan.price}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize: 12, color: C.textDim, textAlign: "center", marginBottom: 16, lineHeight: 1.5 }}>1 good scan can save you $20+ on a bad buy</div>
+        <button onClick={() => onPurchase(selectedPlan)} style={{ width: "100%", padding: "14px 24px", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", borderRadius: 10, cursor: "pointer", fontFamily: F.display, fontSize: 17, fontWeight: 600, letterSpacing: 0.5 }}>
+          Get {selectedPlan?.scans} Deep Scans
+        </button>
+        <div style={{ fontSize: 11, color: C.textMuted, textAlign: "center", marginTop: 10 }}>Quick scans are always free</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── CREDIT BADGE ─────────────────────────────────────────
+function CreditBadge({ remaining, onClick, style }) {
+  const isLow = remaining <= 3;
+  const isEmpty = remaining <= 0;
+  return (
+    <div onClick={onClick} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: 6, background: isEmpty ? `${C.danger}15` : isLow ? `${C.risky}15` : C.bgCard, border: `1px solid ${isEmpty ? C.danger + "40" : isLow ? C.risky + "40" : C.border}`, cursor: onClick ? "pointer" : "default", fontSize: 11, fontFamily: F.mono, ...style }}>
+      <span style={{ fontSize: 13 }}>🔬</span>
+      <span style={{ color: isEmpty ? C.danger : isLow ? C.risky : C.textMuted }}>
+        {isEmpty ? "No deep scans" : `${remaining} deep scan${remaining !== 1 ? "s" : ""}`}
+      </span>
+      {(isEmpty || isLow) && <span style={{ color: C.accent, fontSize: 10, fontWeight: 600 }}>+ Add</span>}
+    </div>
+  );
+}
+
 // ─── DETAIL VIEW ───────────────────────────────────────────
-function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
+function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScansRemaining, onShowPaywall }) {
   const a = item.analysis;
   const v = item.valuation;
   const hasDeep = !!v;
@@ -570,11 +645,19 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
   // Category trigger system
   const trigger = CATEGORY_TRIGGERS[a?.category];
   const [showCatPrompt, setShowCatPrompt] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [catExtras, setCatExtras] = useState({});
+  const pendingExtras = useRef(null);
   const updateExtra = (key, val) => setCatExtras(prev => ({ ...prev, [key]: val }));
-  const handleDeepClick = () => { if (trigger && !hasDeep) { setShowCatPrompt(true); } else { onLoadDeep(null); } };
-  const handleDeepWithExtras = () => { setShowCatPrompt(false); onLoadDeep(catExtras); };
-  const handleSkip = () => { setShowCatPrompt(false); onLoadDeep(null); };
+
+  const handleDeepClick = () => {
+    if (deepScansRemaining <= 0) { onShowPaywall(); return; }
+    if (trigger && !hasDeep) { setShowCatPrompt(true); } else { pendingExtras.current = null; setShowConfirm(true); }
+  };
+  const handleDeepWithExtras = () => { setShowCatPrompt(false); pendingExtras.current = catExtras; setShowConfirm(true); };
+  const handleSkip = () => { setShowCatPrompt(false); pendingExtras.current = null; setShowConfirm(true); };
+  const handleConfirm = () => { setShowConfirm(false); onLoadDeep(pendingExtras.current); };
+  const handleCancelConfirm = () => { setShowConfirm(false); };
 
   // Use deep values when available, fall back to quick estimate
   const quickLow = parseDollar(a?.low_estimate);
@@ -699,7 +782,7 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
       )}
 
       {/* ═══ DEEP SCAN CTA — with optional category prompt ═══ */}
-      {!hasDeep && !deepLoading && !showCatPrompt && (
+      {!hasDeep && !deepLoading && !showCatPrompt && !showConfirm && (
         <div style={{ padding: 24, background: `linear-gradient(135deg, ${C.accentGlow}, ${C.bgCard})`, borderRadius: 12, border: `1px solid ${C.accent}40`, marginBottom: 20, textAlign: "center" }}>
           <div style={{ fontSize: 20, marginBottom: 8 }}>🔬</div>
           <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: C.accent, marginBottom: 6 }}>Get Real Market Value</div>
@@ -707,9 +790,26 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
             Searches real sold listings and live prices to give you an accurate valuation, BUY/PASS verdict, and flip profit calculation.
           </div>
           <button onClick={handleDeepClick} style={{ padding: "12px 36px", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", borderRadius: 8, cursor: "pointer", fontFamily: F.display, fontSize: 16, fontWeight: 600, letterSpacing: 0.5 }}>
-            Run Deep Scan
+            {deepScansRemaining > 0 ? "Run Deep Scan" : "Get Deep Scans"}
           </button>
-          <div style={{ fontSize: 10, color: C.textMuted, marginTop: 8 }}>Uses 1 credit · Searches eBay, marketplaces & resale platforms</div>
+          <div style={{ marginTop: 10 }}>
+            <CreditBadge remaining={deepScansRemaining} onClick={onShowPaywall} />
+          </div>
+        </div>
+      )}
+
+      {/* ═══ DEEP SCAN CONFIRMATION ═══ */}
+      {showConfirm && (
+        <div style={{ padding: 20, background: C.bgCard, borderRadius: 12, border: `1px solid ${C.accent}40`, marginBottom: 20, textAlign: "center" }}>
+          <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 600, color: C.text, marginBottom: 6 }}>Run full analysis?</div>
+          <div style={{ fontSize: 13, color: C.textDim, marginBottom: 4 }}>This will use 1 deep scan to show market value, recent sales, and flip potential.</div>
+          <div style={{ fontSize: 12, fontFamily: F.mono, color: deepScansRemaining <= 3 ? C.risky : C.textMuted, marginBottom: 16 }}>
+            {deepScansRemaining === 1 ? "1 scan left — don't miss your next deal" : `${deepScansRemaining} deep scan${deepScansRemaining !== 1 ? "s" : ""} remaining`}
+          </div>
+          <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+            <button onClick={handleConfirm} style={{ padding: "10px 28px", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", borderRadius: 8, cursor: "pointer", fontFamily: F.display, fontSize: 15, fontWeight: 600 }}>Continue</button>
+            <button onClick={handleCancelConfirm} style={{ padding: "10px 20px", background: "transparent", color: C.textMuted, border: `1px solid ${C.border}`, borderRadius: 8, cursor: "pointer", fontFamily: F.body, fontSize: 13 }}>Cancel</button>
+          </div>
         </div>
       )}
 
@@ -829,6 +929,22 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
         </>
       )}
 
+      {/* ═══ POST-SCAN VALUE REINFORCEMENT ═══ */}
+      {hasDeep && item.askingPrice != null && (() => {
+        const profit = getFlipProfit(item.askingPrice, deepLow, deepHigh);
+        const msg = decision === "PASS" && profit != null && profit < 0
+          ? `This scan just saved you ~$${Math.abs(profit)} on a bad buy`
+          : decision === "BUY" && profit != null && profit > 0
+          ? `This could be a $${profit} flip opportunity`
+          : null;
+        return msg ? (
+          <div style={{ padding: "10px 14px", background: `${decision === "PASS" ? C.danger : C.buy}08`, borderRadius: 8, border: `1px solid ${decision === "PASS" ? C.danger : C.buy}20`, marginBottom: 12, textAlign: "center" }}>
+            <div style={{ fontSize: 13, color: decision === "PASS" ? C.danger : C.buy, fontWeight: 600 }}>{msg}</div>
+          </div>
+        ) : null;
+      })()}
+      {hasDeep && <div style={{ marginBottom: 16 }}><CreditBadge remaining={deepScansRemaining} onClick={onShowPaywall} /></div>}
+
       {/* ═══ ACTION BUTTONS ═══ */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <button onClick={exportText} style={{ flex: 1, padding: "12px 20px", background: C.bgCard, color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 8, cursor: "pointer", fontFamily: F.body, fontSize: 13, fontWeight: 600 }}>📄 Export Report</button>
@@ -869,7 +985,9 @@ export default function RelicID() {
   const [detailItem, setDetailItem] = useState(null);
   const [filterCat, setFilterCat] = useState("All");
   const [searchQ, setSearchQ] = useState("");
-  const [scansToday, setScansToday] = useState(0);
+  const [deepScansRemaining, setDeepScansRemaining] = useState(0);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [purchaseMsg, setPurchaseMsg] = useState(null);
 
   const [photos, setPhotos] = useState([
     { label: "Front", hint: "Main view", dataUrl: null, base64: null, mediaType: null },
@@ -886,12 +1004,36 @@ export default function RelicID() {
 
   useEffect(() => {
     loadCollection().then(items => { setCollection(items); setLoaded(true); });
-    getScansToday().then(setScansToday);
+    setDeepScansRemaining(getDeepScanCredits());
+    // Handle post-purchase URL params
+    const params = new URLSearchParams(window.location.search);
+    const addCredits = parseInt(params.get("add_scans"));
+    if (addCredits > 0) {
+      const newTotal = addDeepScans(addCredits);
+      setDeepScansRemaining(newTotal);
+      setPurchaseMsg(`+${addCredits} Deep Scans added`);
+      window.history.replaceState({}, "", window.location.pathname);
+      setTimeout(() => setPurchaseMsg(null), 4000);
+    }
   }, []);
 
   const hasAnyPhoto = photos.some(p => p.dataUrl);
   const activePhotos = photos.filter(p => p.base64);
-  const atLimit = scansToday >= FREE_SCAN_LIMIT;
+
+  const handlePurchase = (plan) => {
+    // TODO: Replace with Stripe Payment Links
+    // For now, simulate purchase for testing
+    if (plan.stripeLink) {
+      window.location.href = plan.stripeLink;
+    } else {
+      // Test mode: add credits directly
+      const newTotal = addDeepScans(plan.scans);
+      setDeepScansRemaining(newTotal);
+      setShowPaywall(false);
+      setPurchaseMsg(`+${plan.scans} Deep Scans added`);
+      setTimeout(() => setPurchaseMsg(null), 4000);
+    }
+  };
 
   const addPhoto = (index, file) => {
     if (!file?.type.startsWith("image/")) return;
@@ -910,10 +1052,9 @@ export default function RelicID() {
     setScanResult(null); setError(null); setAskingPrice("");
   };
 
-  // ─── MAIN SCAN (light processing, 1 API call) ───────────
+  // ─── MAIN SCAN (light processing, 1 API call, always free) ──
   const runScan = async () => {
     if (activePhotos.length === 0 || scanLock.current) return;
-    if (atLimit) { setError(`Daily scan limit reached (${FREE_SCAN_LIMIT}/${FREE_SCAN_LIMIT}). Upgrade for unlimited scans.`); return; }
 
     scanLock.current = true; // debounce
     setAnalyzing(true); setError(null); setScanResult(null);
@@ -967,10 +1108,6 @@ export default function RelicID() {
       // Cache result
       await setCachedResult(cacheKey, newItem);
 
-      // Increment scan counter
-      const newCount = await incrementScans();
-      setScansToday(newCount);
-
       setScanResult(newItem);
       const updated = [newItem, ...collection];
       setCollection(updated);
@@ -984,9 +1121,12 @@ export default function RelicID() {
     }
   };
 
-  // ─── DEEP ANALYSIS (on demand, lazy loaded) ──────────────
+  // ─── DEEP ANALYSIS (on demand, costs 1 credit) ──────────
   const loadDeepData = async (item, userExtras) => {
     if (deepLoading) return;
+    // Deduct credit
+    if (!deductDeepScan()) { setShowPaywall(true); return; }
+    setDeepScansRemaining(getDeepScanCredits());
     setDeepLoading(true);
     try {
       const deep = await callDeepValuation(item.analysis, userExtras);
@@ -1051,7 +1191,7 @@ export default function RelicID() {
           <div style={{ animation: "fadeIn 0.3s ease" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h2 style={{ fontFamily: F.display, fontSize: 22, fontWeight: 600, color: C.text, margin: 0 }}>Upload Photos</h2>
-              <div style={{ fontSize: 11, fontFamily: F.mono, color: atLimit ? C.danger : C.textMuted }}>{scansToday}/{FREE_SCAN_LIMIT} scans today</div>
+              <CreditBadge remaining={deepScansRemaining} onClick={() => setShowPaywall(true)} />
             </div>
             <p style={{ fontSize: 13, color: C.textDim, margin: "0 0 20px" }}>Add at least one photo. <span style={{ color: C.accent, cursor: "pointer" }} onClick={() => setTab("guide")}>Photo tips →</span></p>
 
@@ -1074,23 +1214,19 @@ export default function RelicID() {
 
             {error && <div style={{ padding: 14, background: `${C.danger}15`, border: `1px solid ${C.danger}40`, borderRadius: 8, color: C.danger, fontSize: 13, marginBottom: 20, textAlign: "center" }}>{error}</div>}
 
-            {atLimit && (
-              <div style={{ padding: 16, background: C.riskyBg, border: `1px solid ${C.riskyBorder}`, borderRadius: 10, marginBottom: 20, textAlign: "center" }}>
-                <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 600, color: C.risky, marginBottom: 4 }}>Daily Scan Limit Reached</div>
-                <div style={{ fontSize: 13, color: C.textDim }}>You've used all {FREE_SCAN_LIMIT} free scans today. Upgrade for unlimited scans.</div>
-              </div>
-            )}
-
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={runScan} disabled={!hasAnyPhoto || analyzing || atLimit} style={{
+              <button onClick={runScan} disabled={!hasAnyPhoto || analyzing} style={{
                 flex: 1, padding: "14px 24px", fontFamily: F.display, fontSize: 16, fontWeight: 600,
-                background: hasAnyPhoto && !atLimit ? `linear-gradient(135deg, ${C.accent}, ${C.accentDim})` : C.bgCard,
-                color: hasAnyPhoto && !atLimit ? C.bg : C.textMuted, border: "none", borderRadius: 8,
-                cursor: hasAnyPhoto && !atLimit ? "pointer" : "not-allowed", letterSpacing: 0.5,
+                background: hasAnyPhoto ? `linear-gradient(135deg, ${C.accent}, ${C.accentDim})` : C.bgCard,
+                color: hasAnyPhoto ? C.bg : C.textMuted, border: "none", borderRadius: 8,
+                cursor: hasAnyPhoto ? "pointer" : "not-allowed", letterSpacing: 0.5,
               }}>
                 {analyzing ? "🔎 Examining..." : "🔍 Quick Scan"}
               </button>
               {hasAnyPhoto && <button onClick={resetScan} style={{ padding: "14px 20px", background: C.bgCard, color: C.textDim, border: `1px solid ${C.border}`, borderRadius: 8, cursor: "pointer", fontFamily: F.body, fontSize: 13 }}>Clear</button>}
+            </div>
+            <div style={{ textAlign: "center", marginTop: 8 }}>
+              <span style={{ fontSize: 11, color: C.textMuted }}>Quick scans are always free</span>
             </div>
 
             {analyzing && (
@@ -1112,7 +1248,7 @@ export default function RelicID() {
               </div>
               <button onClick={resetScan} style={{ padding: "8px 20px", background: C.bgCard, color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 6, cursor: "pointer", fontFamily: F.body, fontSize: 13, fontWeight: 600 }}>📷 Scan Another</button>
             </div>
-            <DetailView item={scanResult} onBack={resetScan} onDelete={() => { deleteItem(scanResult.id); resetScan(); }} onLoadDeep={(extras) => loadDeepData(scanResult, extras)} deepLoading={deepLoading} />
+            <DetailView item={scanResult} onBack={resetScan} onDelete={() => { deleteItem(scanResult.id); resetScan(); }} onLoadDeep={(extras) => loadDeepData(scanResult, extras)} deepLoading={deepLoading} deepScansRemaining={deepScansRemaining} onShowPaywall={() => setShowPaywall(true)} />
           </div>
         )}
 
@@ -1217,7 +1353,7 @@ export default function RelicID() {
 
         {tab === "collection" && detailItem && (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
-            <DetailView item={detailItem} onBack={() => setDetailItem(null)} onDelete={() => deleteItem(detailItem.id)} onLoadDeep={(extras) => loadDeepData(detailItem, extras)} deepLoading={deepLoading} />
+            <DetailView item={detailItem} onBack={() => setDetailItem(null)} onDelete={() => deleteItem(detailItem.id)} onLoadDeep={(extras) => loadDeepData(detailItem, extras)} deepLoading={deepLoading} deepScansRemaining={deepScansRemaining} onShowPaywall={() => setShowPaywall(true)} />
           </div>
         )}
 
@@ -1227,6 +1363,16 @@ export default function RelicID() {
           <p style={{ fontSize: 11, color: C.textMuted, margin: 0 }}>RelicID · AI-powered identification & valuation · Not financial advice · getrelicid.com</p>
         </footer>
       </div>
+
+      {/* ═══ PAYWALL MODAL ═══ */}
+      {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} onPurchase={handlePurchase} remaining={deepScansRemaining} />}
+
+      {/* ═══ PURCHASE CONFIRMATION TOAST ═══ */}
+      {purchaseMsg && (
+        <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", zIndex: 110, padding: "12px 24px", background: C.success, color: "#fff", borderRadius: 10, fontFamily: F.body, fontSize: 14, fontWeight: 600, boxShadow: "0 4px 20px rgba(0,0,0,0.3)", animation: "fadeIn 0.3s ease" }}>
+          {purchaseMsg}
+        </div>
+      )}
     </div>
   );
 }
