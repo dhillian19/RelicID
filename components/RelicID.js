@@ -4,34 +4,63 @@ import { useState, useRef, useCallback, useEffect } from "react";
 
 // ─── PROMPTS ───────────────────────────────────────────────
 // LIGHT prompt — quick ID + basic value estimate (1 API call, no web search)
-const LIGHT_PROMPT = (photoCount) => `You are an expert product identifier and valuation specialist. Identify ${photoCount > 1 ? "these items" : "this item"} as specifically as possible and estimate value.
+const LIGHT_PROMPT = (photoCount) => `You are an expert product identifier and valuation specialist. Your job is to identify ${photoCount > 1 ? "these items" : "this item"}, determine what it is, and estimate value — but ONLY after classifying what you're actually looking at.
+
+═══ STEP 1: CLASSIFY WHAT YOU SEE ═══
+Before identifying anything, determine the OBJECT TYPE:
+
+• "Physical Object" — a real 3D item (toy, shoe, card, tool, device, clothing, etc.)
+• "Printed Media" — a poster, art print, playmat, book cover, photograph of a flat printed item
+• "Screen Capture" — a photo of a phone screen, monitor, TV, or digital display
+• "Packaging Only" — just a box, wrapper, or container with no visible item inside
+
+Use these signals:
+FLAT / PRINTED indicators: uniform flat surface, consistent lighting across entire image, no true depth separation, printed textures or pixelation, visible paper/canvas edges, perspective distortion consistent with a flat plane.
+REAL 3D OBJECT indicators: visible depth and layering, shadows cast between objects, irregular lighting, perspective changes, physical wear patterns (not printed wear).
+SCREEN indicators: visible pixels, screen glare, device bezels, backlit glow, moire patterns.
+
+If you are NOT confident about the object type, say so. "Appears to be" and "may be" are always better than a wrong confident call.
+
+═══ STEP 2: IDENTIFY & VALUE (conditional) ═══
+Your behavior depends on the object type:
+
+IF Physical Object → proceed with full identification. Be as specific as possible:
+- For trading cards: EXACT card name, set, card number, edition, language, holo status
+- For branded items: brand, exact model/product name, colorway, size if visible, release year
+- For vintage/older items: maker marks, stamps, signatures, patent numbers
+- For condition: note whether graded/slabbed or raw/ungraded/loose — this dramatically affects value
+
+IF Printed Media → describe what is depicted, identify the type (poster, art print, playmat, promotional material), note any value it may have as printed media. Do NOT treat it as the physical item it depicts.
+
+IF Screen Capture → note this is a photo of a screen. Describe what's shown. Do NOT value it as a physical item. Set confidence_percent to 30 or lower.
+
+IF Packaging Only → identify the product from the packaging, but note that the actual item is not visible. Value should reflect "sealed/boxed" pricing if applicable, or note that contents cannot be verified.
 
 CRITICAL RULES:
-- Your #1 job is PRECISE IDENTIFICATION. For any collectible, find the EXACT product: model number, set name, card number, edition, version, SKU, ISBN, year of release, or any other uniquely identifying detail visible in the photos.
-- For trading cards: identify the EXACT card name, set (e.g. "Base Set", "Jungle", "Fossil"), card number (e.g. "15/102"), edition (1st Edition, Unlimited, Shadowless), language, and whether it is holographic. Look for set symbols, card numbers, and edition stamps.
-- For branded items (shoes, hats, clothing, electronics, toys): identify brand, exact model/product name, colorway, size if visible, and approximate release year.
-- For vintage or older items: identify maker marks, stamps, signatures, patent numbers, or any other identifying marks. If none visible, list plausible makers.
+- Your #1 job is PRECISE IDENTIFICATION. Find the EXACT product: model number, set name, card number, edition, version, SKU, ISBN, year of release.
 - Only name a specific pattern, motif, or symbol if you are 100% certain. If there is ANY doubt, describe what you physically see instead.
 - NEVER speculate about religious motifs or culturally sensitive imagery.
 - Be honest about what you CAN'T determine. "Cannot confirm from photos" is better than a wrong guess.
-- For condition: note whether the item appears graded/slabbed/authenticated or is raw/ungraded/loose. This dramatically affects value.
 ${photoCount > 1 ? "- Consider ALL photos together." : ""}
 
 Respond ONLY with this JSON (no markdown, no backticks):
 {
-  "item_name": "Most specific name possible. For cards: 'Venusaur 15/102 Base Set Unlimited Holo'. For shoes: 'Nike Air Jordan 1 Retro High OG Chicago 2015'. For vintage items: 'Roseville Pottery Pinecone Vase 712-10 Brown'. Always include identifying numbers/editions.",
-  "category": "One of: Furniture, Pottery/Porcelain, Glassware, Coins/Currency, Jewelry/Metals, Toys/Games, Art/Prints, Textiles, Books/Ephemera, Tools/Instruments, Clothing/Accessories, Electronics, Other",
+  "object_type": "One of: Physical Object, Printed Media, Screen Capture, Packaging Only",
+  "object_type_confidence": "High, Medium, or Low",
+  "object_type_note": "Brief explanation if confidence is not High, or if there's ambiguity. null if straightforward.",
+  "item_name": "Most specific name possible. For cards: 'Venusaur 15/102 Base Set Unlimited Holo'. For shoes: 'Nike Air Jordan 1 Retro High OG Chicago 2015'. For vintage items: 'Roseville Pottery Pinecone Vase 712-10 Brown'. For printed media: 'Poster depicting [subject]'. Always include identifying numbers/editions when visible.",
+  "category": "One of: Furniture, Pottery/Porcelain, Glassware, Coins/Currency, Jewelry/Metals, Toys/Games, Art/Prints, Textiles, Books/Ephemera, Tools/Instruments, Clothing/Accessories, Electronics, Trading Cards, Sneakers/Footwear, Other",
   "estimated_era": "Date range or specific year",
   "style_period": "Style, period, set name, or product line",
   "likely_origin": "Country or region",
   "maker": "Brand or maker. Only name specific maker if confirmed by visible marks. Otherwise: 'Unconfirmed — possible: [X, Y, Z].'",
   "materials": ["materials"],
-  "condition_notes": "Observable condition. State if graded/slabbed or raw/ungraded. Note specific flaws: edge wear, scratches, fading, chips, etc.",
-  "condition_grade": "One of: Mint, Near Mint, Excellent, Very Good, Good, Fair, Poor — or 'Graded [grade]' if in a grading slab",
+  "condition_notes": "Observable condition. State if graded/slabbed or raw/ungraded. Note specific flaws. For non-physical items, describe the media condition.",
+  "condition_grade": "One of: Mint, Near Mint, Excellent, Very Good, Good, Fair, Poor — or 'Graded [grade]' if in a grading slab. null if not a physical object.",
   "key_features": ["Specific identifying details you can see — card numbers, set symbols, edition stamps, maker marks, model numbers, serial numbers, signatures, tags, labels"],
-  "search_query": "The most effective search query to find this exact item's market value. Be specific: include brand, model, set, number, edition, condition keywords. Example: 'Venusaur 15/102 Base Set Unlimited raw sold' or 'Nike Air Jordan 1 Chicago 2015 used sold'.",
+  "search_query": "The most effective search query to find this exact item's market value. Be specific. For printed media, search for the print/poster specifically — not the item it depicts.",
   "confidence_percent": 75,
-  "description": "2-3 sentence summary. Lead with the specific identification, then describe condition and notable features.",
+  "description": "2-3 sentence summary. Lead with object type if it's NOT a straightforward physical object. Then the specific identification, condition, and notable features.",
   "low_estimate": 20,
   "high_estimate": 100,
   "demand_level": "High, Medium, or Low",
@@ -39,12 +68,13 @@ Respond ONLY with this JSON (no markdown, no backticks):
   "market_trend": "Rising, Stable, or Declining"
 }
 
-IMPORTANT: low_estimate and high_estimate are plain numbers. confidence_percent is a number 0-100. Be as specific as humanly possible in item_name and search_query — vague descriptions produce bad valuations.`;
+IMPORTANT: low_estimate and high_estimate are plain numbers. confidence_percent is a number 0-100. If this is a screen capture, set estimates to 0. Be as specific as humanly possible in item_name and search_query — vague descriptions produce bad valuations.`;
 
 // DEEP prompt — full valuation with web search (expensive, only on demand)
 const DEEP_PROMPT = (info) => `You are a market valuation researcher. Search for recent SOLD prices and current listings for this specific item.
 
 Item: ${info.item_name}
+Object Type: ${info.object_type || "Physical Object"}
 Era: ${info.estimated_era}
 Style/Set: ${info.style_period}
 Origin: ${info.likely_origin}
@@ -60,6 +90,8 @@ CRITICAL SEARCH RULES:
 3. Match the item's condition when pulling comps. If the item is raw/ungraded, prioritize raw/ungraded sold prices. Do NOT mix graded prices (PSA 8, BGS 9, etc.) with raw prices — they are completely different markets.
 4. For each sale you report, include the SOURCE URL from your search results. This is critical — users need to verify the data.
 5. If you find conflicting prices, weight recent sold prices over active listings, and condition-matched comps over mismatched ones.
+6. If the Object Type is "Printed Media", search for the print/poster/media itself — NOT the physical item it depicts. A poster of a toy is worth poster prices, not toy prices.
+7. If the Object Type is "Packaging Only", search for sealed/boxed pricing if applicable, and note that contents cannot be verified.
 
 Respond ONLY with this JSON (no markdown, no backticks):
 {
@@ -408,6 +440,9 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
   const a = item.analysis;
   const v = item.valuation;
   const hasDeep = !!v;
+  const objectType = a?.object_type || "Physical Object";
+  const isPhysical = objectType === "Physical Object";
+  const isScreen = objectType === "Screen Capture";
 
   // Use deep values when available, fall back to quick estimate
   const quickLow = parseDollar(a?.low_estimate);
@@ -417,8 +452,8 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
   const lowVal = hasDeep && deepLow != null ? deepLow : quickLow;
   const highVal = hasDeep && deepHigh != null ? deepHigh : quickHigh;
 
-  // Decision ONLY from deep data
-  const decision = hasDeep && item.askingPrice != null ? getDecision(item.askingPrice, deepLow, deepHigh) : null;
+  // Decision ONLY from deep data, and only for physical objects
+  const decision = hasDeep && isPhysical && item.askingPrice != null ? getDecision(item.askingPrice, deepLow, deepHigh) : null;
   const confPercent = a?.confidence_percent || 60;
 
   // Check if deep values differ significantly from quick
@@ -453,16 +488,32 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
     <div>
       <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: C.accent, fontFamily: F.body, fontSize: 14, cursor: "pointer", padding: "0 0 16px", fontWeight: 600 }}>← Back</button>
 
-      {/* ═══ DECISION — only after Deep Scan ═══ */}
-      {hasDeep ? (
+      {/* ═══ OBJECT TYPE WARNING — for non-physical items ═══ */}
+      {!isPhysical && (
+        <div style={{ padding: "14px 18px", background: isScreen ? `${C.danger}10` : `${C.info}10`, borderRadius: 10, border: `1px solid ${isScreen ? C.danger + "30" : C.info + "30"}`, marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <span style={{ fontSize: 16 }}>{isScreen ? "📱" : objectType === "Printed Media" ? "🖼️" : "📦"}</span>
+            <span style={{ fontSize: 12, fontFamily: F.mono, fontWeight: 600, color: isScreen ? C.danger : C.info, textTransform: "uppercase", letterSpacing: 1 }}>{objectType}</span>
+          </div>
+          <div style={{ fontSize: 13, color: C.textDim, lineHeight: 1.5 }}>
+            {isScreen && "This appears to be a photo of a screen or display — not a physical item. Values shown are not reliable."}
+            {objectType === "Printed Media" && "This appears to be printed media (poster, print, or flat image) rather than a physical object. Value reflects the print itself, not the item depicted."}
+            {objectType === "Packaging Only" && "Only packaging is visible — the actual item inside cannot be verified from these photos."}
+          </div>
+          {a?.object_type_note && <div style={{ fontSize: 11, color: C.textMuted, marginTop: 6, fontStyle: "italic" }}>{a.object_type_note}</div>}
+        </div>
+      )}
+
+      {/* ═══ DECISION — only after Deep Scan, only for physical items ═══ */}
+      {isPhysical && hasDeep ? (
         <DecisionBadge decision={decision} askingPrice={item.askingPrice} lowVal={deepLow} highVal={deepHigh} />
-      ) : (
+      ) : isPhysical && !hasDeep ? (
         /* Quick Scan: prompt to run deep scan for decisions */
         <div style={{ padding: "16px 20px", background: C.bgSurface, borderRadius: 12, border: `1px dashed ${C.border}`, textAlign: "center", marginBottom: 20 }}>
           <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 4 }}>💡 Run a <strong style={{ color: C.accent }}>Deep Scan</strong> to get BUY/PASS verdict and flip profit</div>
           {item.askingPrice != null && <div style={{ fontSize: 11, color: C.textMuted }}>Asking price of ${item.askingPrice} saved — will be evaluated after Deep Scan</div>}
         </div>
-      )}
+      ) : null}
 
       {/* ═══ CONFIDENCE — always shown ═══ */}
       <ConfidenceBar percent={confPercent} />
@@ -477,6 +528,7 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
       {/* ═══ ITEM TITLE & META ═══ */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
         <span style={{ fontSize: 11, fontFamily: F.mono, padding: "3px 10px", borderRadius: 4, background: C.accentGlow, color: C.accent, border: `1px solid ${C.accentDim}` }}>{a?.category}</span>
+        {!isPhysical && <span style={{ fontSize: 11, fontFamily: F.mono, padding: "3px 10px", borderRadius: 4, color: isScreen ? C.danger : C.info, border: `1px solid ${isScreen ? C.danger : C.info}40`, background: isScreen ? `${C.danger}10` : `${C.info}10` }}>{objectType}</span>}
         <span style={{ fontSize: 11, fontFamily: F.mono, padding: "3px 10px", borderRadius: 4, color: hasDeep ? C.success : C.textMuted, border: `1px solid ${hasDeep ? C.success : C.textMuted}40`, background: hasDeep ? `${C.success}10` : "transparent" }}>
           {hasDeep ? "✓ Deep Scan" : "⚡ Quick Scan"}
         </span>
@@ -514,8 +566,8 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
         </div>
       )}
 
-      {/* ═══ DEEP SCAN CTA — prominent when no deep data ═══ */}
-      {!hasDeep && !deepLoading && (
+      {/* ═══ DEEP SCAN CTA — prominent when no deep data, hidden for screen captures ═══ */}
+      {!hasDeep && !deepLoading && !isScreen && (
         <div style={{ padding: 24, background: `linear-gradient(135deg, ${C.accentGlow}, ${C.bgCard})`, borderRadius: 12, border: `1px solid ${C.accent}40`, marginBottom: 20, textAlign: "center" }}>
           <div style={{ fontSize: 20, marginBottom: 8 }}>🔬</div>
           <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: C.accent, marginBottom: 6 }}>Get Real Market Value</div>
@@ -718,6 +770,9 @@ export default function RelicID() {
         low_estimate: result.low_estimate, high_estimate: result.high_estimate,
         demand_level: result.demand_level, sell_speed: result.sell_speed, market_trend: result.market_trend,
         condition_grade: result.condition_grade, search_query: result.search_query,
+        object_type: result.object_type || "Physical Object",
+        object_type_confidence: result.object_type_confidence || "Medium",
+        object_type_note: result.object_type_note || null,
       };
 
       const priceNum = askingPrice ? parseFloat(askingPrice) : null;
