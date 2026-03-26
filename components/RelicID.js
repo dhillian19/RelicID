@@ -29,6 +29,13 @@ IF Physical Object → proceed with full identification. Be as specific as possi
 - For branded items: brand, exact model/product name, colorway, size if visible, release year
 - For vintage/older items: maker marks, stamps, signatures, patent numbers
 - For condition: note whether graded/slabbed or raw/ungraded/loose — this dramatically affects value
+- For HANDMADE / CUSTOM / ONE-OF-A-KIND items (cross-stitch, paintings, custom builds, hand-sewn, woodwork, pottery without maker marks, fan art, custom jewelry, etc.): these will NOT have exact matches on the market. Instead:
+  • Identify the MEDIUM (cross-stitch, oil painting, woodworking, etc.)
+  • Estimate SIZE if possible from context clues
+  • Identify the SUBJECT MATTER (video game, sports, portrait, etc.)
+  • Note the level of DETAIL and CRAFTSMANSHIP
+  • Set is_unique to true
+  • Build search_query around COMPARABLE pieces, not exact matches (e.g. "large completed cross stitch video game pixel art sold" or "handmade WWF wrestling wall art sold")
 
 IF Printed Media → describe what is depicted, identify the type (poster, art print, playmat, promotional material), note any value it may have as printed media. Do NOT treat it as the physical item it depicts.
 
@@ -58,7 +65,8 @@ Respond ONLY with this JSON (no markdown, no backticks):
   "condition_notes": "Observable condition. State if graded/slabbed or raw/ungraded. Note specific flaws. For non-physical items, describe the media condition.",
   "condition_grade": "One of: Mint, Near Mint, Excellent, Very Good, Good, Fair, Poor — or 'Graded [grade]' if in a grading slab. null if not a physical object.",
   "key_features": ["Specific identifying details you can see — card numbers, set symbols, edition stamps, maker marks, model numbers, serial numbers, signatures, tags, labels"],
-  "search_query": "The most effective search query to find this exact item's market value. Be specific. For printed media, search for the print/poster specifically — not the item it depicts.",
+  "search_query": "The most effective search query to find this item's market value. For mass-produced items: be specific with brand, model, set, number, edition. For handmade/unique items: search for COMPARABLE pieces by medium + subject + size (e.g. 'large completed cross stitch pixel art video game sold' or 'handmade wrestling fan art framed sold'). For printed media: search for the print/poster specifically.",
+  "is_unique": false,
   "confidence_percent": 75,
   "description": "2-3 sentence summary. Lead with object type if it's NOT a straightforward physical object. Then the specific identification, condition, and notable features.",
   "low_estimate": 20,
@@ -71,11 +79,11 @@ Respond ONLY with this JSON (no markdown, no backticks):
 IMPORTANT: low_estimate and high_estimate are plain numbers. confidence_percent is a number 0-100. For screen captures, estimate the value of the DEPICTED ITEM but use a wider range to reflect uncertainty. Be as specific as humanly possible in item_name and search_query — vague descriptions produce bad valuations.`;
 
 // DEEP prompt — full valuation with web search (expensive, only on demand)
-const DEEP_PROMPT = (info) => `You are a market valuation researcher. Search for recent SOLD prices and current listings for this specific item.
+const DEEP_PROMPT = (info) => `You are a market valuation researcher. Search for recent SOLD prices and current listings for this ${info.is_unique ? "type of item" : "specific item"}.
 
 Item: ${info.item_name}
 Object Type: ${info.object_type || "Physical Object"}
-Era: ${info.estimated_era}
+${info.is_unique ? "⚠️ UNIQUE / HANDMADE ITEM — no exact match will exist. Search for COMPARABLE pieces.\n" : ""}Era: ${info.estimated_era}
 Style/Set: ${info.style_period}
 Origin: ${info.likely_origin}
 Maker/Brand: ${info.maker}
@@ -93,6 +101,15 @@ CRITICAL SEARCH RULES:
 6. If the Object Type is "Printed Media", search for the print/poster/media itself — NOT the physical item it depicts. A poster of a toy is worth poster prices, not toy prices.
 7. If the Object Type is "Packaging Only", search for sealed/boxed pricing if applicable, and note that contents cannot be verified.
 8. If the Object Type is "Screen Capture", search for the DEPICTED ITEM as if it were a physical object. The user is checking value before buying. Note in your response that condition cannot be confirmed from a screenshot.
+9. FOR UNIQUE / HANDMADE ITEMS: There will be NO exact match. Do NOT give up or return empty results. Instead:
+   a. Search for comparable pieces by MEDIUM (e.g. "completed cross stitch", "handmade oil painting", "custom woodwork")
+   b. Add the SUBJECT MATTER to narrow results (e.g. "video game cross stitch", "wrestling fan art")
+   c. Factor in SIZE — larger handmade pieces command higher prices
+   d. Factor in DETAIL LEVEL — highly detailed work with many colors/stitches is worth more
+   e. Search Etsy, eBay, and craft marketplaces for comparable sold pieces
+   f. Try multiple searches: one for the medium + subject, one for the medium + size, one broader if needed
+   g. In recent_sales, label comps clearly as "Comparable piece" not "Same item"
+   h. In notes, explain how you arrived at the estimate since there's no exact match
 
 Respond ONLY with this JSON (no markdown, no backticks):
 {
@@ -359,22 +376,23 @@ function ConfidenceBar({ percent }) {
   );
 }
 
-function RecentSales({ sales, loading }) {
+function RecentSales({ sales, loading, isUnique }) {
+  const title = isUnique ? "Comparable Sales" : "Recent Sales";
   if (loading) return (
     <div style={{ padding: 16, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 16, textAlign: "center" }}>
-      <div style={{ fontSize: 9, fontFamily: F.mono, color: C.accent, textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>Recent Sales</div>
+      <div style={{ fontSize: 9, fontFamily: F.mono, color: C.accent, textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>{title}</div>
       <div style={{ fontSize: 13, color: C.textMuted, animation: "pulse 1.5s infinite" }}>🔍 Searching recent sales...</div>
     </div>
   );
   if (!sales || sales.length === 0) return (
     <div style={{ padding: 16, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 16 }}>
-      <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>Recent Sales</div>
+      <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>{title}</div>
       <div style={{ fontSize: 13, color: C.textMuted, fontStyle: "italic" }}>No recent sales data found</div>
     </div>
   );
   return (
     <div style={{ padding: 16, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 16 }}>
-      <div style={{ fontSize: 9, fontFamily: F.mono, color: C.accent, textTransform: "uppercase", letterSpacing: 2, marginBottom: 10 }}>Recent Sales</div>
+      <div style={{ fontSize: 9, fontFamily: F.mono, color: C.accent, textTransform: "uppercase", letterSpacing: 2, marginBottom: 10 }}>{title}</div>
       {sales.map((s, i) => {
         // Handle both old string format and new object format
         const isObject = typeof s === "object" && s !== null;
@@ -597,6 +615,17 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
       {/* ═══ DESCRIPTION & DETAILS — always shown ═══ */}
       <p style={{ fontSize: 15, lineHeight: 1.7, color: C.text, margin: "0 0 16px" }}>{a?.description}</p>
 
+      {/* ═══ UNIQUE / HANDMADE NOTICE ═══ */}
+      {a?.is_unique && (
+        <div style={{ padding: "12px 16px", background: `${C.accent}08`, borderRadius: 8, border: `1px solid ${C.accent}25`, marginBottom: 12, display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }}>🎨</span>
+          <div>
+            <div style={{ fontSize: 12, fontFamily: F.mono, fontWeight: 600, color: C.accent, marginBottom: 2 }}>Handmade / One-of-a-Kind</div>
+            <div style={{ fontSize: 12, color: C.textDim, lineHeight: 1.5 }}>No exact match exists. Value is estimated from comparable pieces by medium, size, and subject matter.</div>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
         {[{ l: "Maker", v: a?.maker }, { l: "Materials", v: a?.materials?.join(", ") }].map((d, i) => (
           <div key={i} style={{ padding: 14, background: C.bgCard, borderRadius: 8, border: `1px solid ${C.border}` }}>
@@ -626,7 +655,7 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
       {/* ═══ DEEP SCAN DATA — only after deep scan ═══ */}
       {hasDeep && (
         <>
-          <RecentSales sales={v?.recent_sales} loading={false} />
+          <RecentSales sales={v?.recent_sales} loading={false} isUnique={!!a?.is_unique} />
           {v?.value_factors?.length > 0 && (
             <div style={{ padding: 14, background: C.bgCard, borderRadius: 8, border: `1px solid ${C.border}`, marginBottom: 10 }}>
               <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 2, marginBottom: 6 }}>Value Factors</div>
@@ -774,6 +803,7 @@ export default function RelicID() {
         object_type: result.object_type || "Physical Object",
         object_type_confidence: result.object_type_confidence || "Medium",
         object_type_note: result.object_type_note || null,
+        is_unique: result.is_unique || false,
       };
 
       const priceNum = askingPrice ? parseFloat(askingPrice) : null;
