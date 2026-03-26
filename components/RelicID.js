@@ -56,7 +56,7 @@ Respond ONLY with this JSON (no markdown, no backticks):
   "object_type_confidence": "High, Medium, or Low",
   "object_type_note": "Brief explanation if confidence is not High, or if there's ambiguity. null if straightforward.",
   "item_name": "Most specific name possible. For cards: 'Venusaur 15/102 Base Set Unlimited Holo'. For shoes: 'Nike Air Jordan 1 Retro High OG Chicago 2015'. For vintage items: 'Roseville Pottery Pinecone Vase 712-10 Brown'. For printed media: 'Poster depicting [subject]'. For screen captures: name the DEPICTED ITEM, not the screenshot itself (e.g. 'WWF Wrestling Challenge Arcade Cabinet' not 'Screenshot of WWF game'). Always include identifying numbers/editions when visible.",
-  "category": "One of: Furniture, Pottery/Porcelain, Glassware, Coins/Currency, Jewelry/Metals, Toys/Games, Art/Prints, Textiles, Books/Ephemera, Tools/Instruments, Clothing/Accessories, Electronics, Trading Cards, Sneakers/Footwear, Other",
+  "category": "One of: Furniture, Pottery/Porcelain, Glassware, Coins/Currency, Jewelry/Metals, Toys/Games, Art/Prints, Textiles, Books/Ephemera, Tools/Instruments, Clothing/Accessories, Electronics, Trading Cards, Sneakers/Footwear, Vehicles, Other",
   "estimated_era": "Date range or specific year",
   "style_period": "Style, period, set name, or product line",
   "likely_origin": "Country or region",
@@ -79,7 +79,13 @@ Respond ONLY with this JSON (no markdown, no backticks):
 IMPORTANT: low_estimate and high_estimate are plain numbers. confidence_percent is a number 0-100. For screen captures, estimate the value of the DEPICTED ITEM but use a wider range to reflect uncertainty. Be as specific as humanly possible in item_name and search_query — vague descriptions produce bad valuations.`;
 
 // DEEP prompt — full valuation with web search (expensive, only on demand)
-const DEEP_PROMPT = (info) => `You are a market valuation researcher. Search for recent SOLD prices and current listings for this ${info.is_unique ? "type of item" : "specific item"}.
+const DEEP_PROMPT = (info, userExtras) => {
+  const trigger = CATEGORY_TRIGGERS[info.category];
+  const extrasText = trigger && userExtras && Object.keys(userExtras).some(k => userExtras[k])
+    ? `\n\nUSER-PROVIDED DETAILS:\n${trigger.deepInstructions(userExtras)}\nUse these details to narrow your search and improve accuracy.`
+    : trigger ? `\n\nUSER-PROVIDED DETAILS:\n${trigger.deepInstructions({})}\n${trigger.missingNote}` : "";
+
+  return `You are a market valuation researcher. Search for recent SOLD prices and current listings for this ${info.is_unique ? "type of item" : "specific item"}.
 
 Item: ${info.item_name}
 Object Type: ${info.object_type || "Physical Object"}
@@ -90,7 +96,7 @@ Maker/Brand: ${info.maker}
 Category: ${info.category}
 Condition: ${info.condition_notes || "Unknown"}
 ${info.condition_grade ? `Condition Grade: ${info.condition_grade}` : ""}
-${info.search_query ? `Suggested Search: ${info.search_query}` : ""}
+${info.search_query ? `Suggested Search: ${info.search_query}` : ""}${extrasText}
 
 CRITICAL SEARCH RULES:
 1. Use the Suggested Search query as your starting point. If it's specific (includes model numbers, set names, card numbers), search for that EXACT item.
@@ -128,6 +134,58 @@ Respond ONLY with this JSON (no markdown, no backticks):
 }
 
 IMPORTANT: low_estimate and high_estimate must be plain numbers reflecting the item's ACTUAL CONDITION (not best-case graded prices). recent_sales must be an array of objects with price, platform, date, description, and url fields. Only include sales/listings you actually found — never invent data. If a URL is not available for a sale, set url to null.`;
+};
+
+// ─── CATEGORY TRIGGER SYSTEM ──────────────────────────────
+const CATEGORY_TRIGGERS = {
+  "Vehicles": {
+    icon: "🚗", title: "Improve Vehicle Valuation", description: "Year and mileage make a big difference in pricing.",
+    fields: [
+      { key: "year", label: "Exact Year", type: "number", placeholder: "e.g. 2019" },
+      { key: "mileage", label: "Mileage", type: "number", placeholder: "e.g. 45000" },
+    ],
+    missingNote: "This estimate is based on general market data for similar vehicles. Exact value may vary significantly depending on mileage, condition, and options.",
+    deepInstructions: (e) => { let l = []; if (e.year) l.push(`User-confirmed year: ${e.year}`); if (e.mileage) l.push(`User-reported mileage: ${e.mileage} miles`); return l.length ? l.join("\n") : "No additional details provided. Give a broader market estimate."; },
+  },
+  "Trading Cards": {
+    icon: "🃏", title: "Improve Card Valuation", description: "A few details can dramatically narrow the price range.",
+    fields: [
+      { key: "set_name", label: "Set Name", type: "text", placeholder: "e.g. Base Set, Prismatic Evolutions" },
+      { key: "card_number", label: "Card Number", type: "text", placeholder: "e.g. 15/102" },
+      { key: "grade", label: "Grade (if graded)", type: "text", placeholder: "e.g. PSA 9, BGS 10" },
+      { key: "variant", label: "Variant", type: "text", placeholder: "e.g. 1st Edition, Holo" },
+    ],
+    missingNote: "Value varies significantly by edition, condition, and grading.",
+    deepInstructions: (e) => { let l = []; if (e.set_name) l.push(`Set: ${e.set_name}`); if (e.card_number) l.push(`Card #: ${e.card_number}`); if (e.grade) l.push(`Grade: ${e.grade} — search this EXACT grade`); if (e.variant) l.push(`Variant: ${e.variant}`); return l.length ? l.join("\n") : "No additional details provided."; },
+  },
+  "Sneakers/Footwear": {
+    icon: "👟", title: "Improve Sneaker Valuation", description: "Size and box status affect resale price significantly.",
+    fields: [
+      { key: "size", label: "Size", type: "text", placeholder: "e.g. Men's 10.5" },
+      { key: "with_box", label: "Original Box?", type: "select", options: ["Yes", "No", "Not sure"] },
+    ],
+    missingNote: "Sneaker resale value depends heavily on size and whether the original box is included.",
+    deepInstructions: (e) => { let l = []; if (e.size) l.push(`Size: ${e.size}`); if (e.with_box && e.with_box !== "Not sure") l.push(`Box: ${e.with_box}`); return l.length ? l.join("\n") : "No additional details provided."; },
+  },
+  "Electronics": {
+    icon: "🔌", title: "Improve Electronics Valuation", description: "Storage and working condition matter.",
+    fields: [
+      { key: "storage", label: "Storage / Capacity", type: "text", placeholder: "e.g. 256GB, 1TB" },
+      { key: "working", label: "Working Condition", type: "select", options: ["Fully working", "Partially working", "Not working", "Not sure"] },
+    ],
+    missingNote: "Value depends on storage capacity, working condition, and included accessories.",
+    deepInstructions: (e) => { let l = []; if (e.storage) l.push(`Storage: ${e.storage}`); if (e.working && e.working !== "Not sure") l.push(`Condition: ${e.working}`); return l.length ? l.join("\n") : "No additional details provided."; },
+  },
+  "Clothing/Accessories": {
+    icon: "👔", title: "Improve Clothing Valuation", description: "Size and tags help narrow the price.",
+    fields: [
+      { key: "size", label: "Size", type: "text", placeholder: "e.g. Large, 32x30" },
+      { key: "with_tags", label: "Tags Attached?", type: "select", options: ["Yes — new with tags", "No — tags removed", "Not sure"] },
+    ],
+    missingNote: "Resale value varies by size, condition, and whether tags are still attached.",
+    deepInstructions: (e) => { let l = []; if (e.size) l.push(`Size: ${e.size}`); if (e.with_tags && e.with_tags !== "Not sure") l.push(`Tags: ${e.with_tags}`); return l.length ? l.join("\n") : "No additional details provided."; },
+  },
+};
 
 // ─── DESIGN SYSTEM ─────────────────────────────────────────
 const C = {
@@ -269,11 +327,11 @@ async function callLightAnalysis(images) {
   return parseJson(text);
 }
 
-async function callDeepValuation(analysis) {
+async function callDeepValuation(analysis, userExtras) {
   console.log("[RelicID] Deep valuation — calling /api/deep-scan");
   const res = await fetch("/api/deep-scan", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 8192, messages: [{ role: "user", content: DEEP_PROMPT(analysis) }] }),
+    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 8192, messages: [{ role: "user", content: DEEP_PROMPT(analysis, userExtras) }] }),
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error.message);
@@ -287,6 +345,30 @@ async function loadCollection() {
 }
 async function saveCollection(items) {
   try { localStorage.setItem("relicid-collection", JSON.stringify(items)); } catch (e) { console.error("Save:", e); }
+}
+
+// ─── COLLECTION STATS ─────────────────────────────────────
+function getCollectionStats(items) {
+  let totalValue = 0, totalProfit = 0, bestFind = null, highestProfit = null, needsReview = null;
+  let bestFindVal = 0, highestProfitVal = -Infinity;
+  items.forEach(item => {
+    const v = item.valuation;
+    const a = item.analysis;
+    const low = parseDollar(v?.low_estimate ?? a?.low_estimate);
+    const high = parseDollar(v?.high_estimate ?? a?.high_estimate);
+    if (low != null && high != null) {
+      const avg = (low + high) / 2;
+      totalValue += avg;
+      if (avg > bestFindVal) { bestFindVal = avg; bestFind = item; }
+      if (item.askingPrice != null) {
+        const profit = avg - item.askingPrice;
+        totalProfit += Math.max(profit, 0);
+        if (profit > highestProfitVal) { highestProfitVal = profit; highestProfit = item; }
+      }
+    }
+    if (!needsReview && (a?.confidence_percent || 60) < 50) needsReview = item;
+  });
+  return { totalValue: Math.round(totalValue), totalProfit: Math.round(totalProfit), bestFind, highestProfit, needsReview, count: items.length };
 }
 
 // ─── UI COMPONENTS (unchanged) ─────────────────────────────
@@ -463,6 +545,15 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
   const isPhysical = objectType === "Physical Object";
   const isScreen = objectType === "Screen Capture";
 
+  // Category trigger system
+  const trigger = CATEGORY_TRIGGERS[a?.category];
+  const [showCatPrompt, setShowCatPrompt] = useState(false);
+  const [catExtras, setCatExtras] = useState({});
+  const updateExtra = (key, val) => setCatExtras(prev => ({ ...prev, [key]: val }));
+  const handleDeepClick = () => { if (trigger && !hasDeep) { setShowCatPrompt(true); } else { onLoadDeep(null); } };
+  const handleDeepWithExtras = () => { setShowCatPrompt(false); onLoadDeep(catExtras); };
+  const handleSkip = () => { setShowCatPrompt(false); onLoadDeep(null); };
+
   // Use deep values when available, fall back to quick estimate
   const quickLow = parseDollar(a?.low_estimate);
   const quickHigh = parseDollar(a?.high_estimate);
@@ -585,18 +676,52 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
         </div>
       )}
 
-      {/* ═══ DEEP SCAN CTA — prominent when no deep data ═══ */}
-      {!hasDeep && !deepLoading && (
+      {/* ═══ DEEP SCAN CTA — with optional category prompt ═══ */}
+      {!hasDeep && !deepLoading && !showCatPrompt && (
         <div style={{ padding: 24, background: `linear-gradient(135deg, ${C.accentGlow}, ${C.bgCard})`, borderRadius: 12, border: `1px solid ${C.accent}40`, marginBottom: 20, textAlign: "center" }}>
           <div style={{ fontSize: 20, marginBottom: 8 }}>🔬</div>
           <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: C.accent, marginBottom: 6 }}>Get Real Market Value</div>
           <div style={{ fontSize: 13, color: C.textDim, marginBottom: 14, lineHeight: 1.5 }}>
             Searches real sold listings and live prices to give you an accurate valuation, BUY/PASS verdict, and flip profit calculation.
           </div>
-          <button onClick={onLoadDeep} style={{ padding: "12px 36px", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", borderRadius: 8, cursor: "pointer", fontFamily: F.display, fontSize: 16, fontWeight: 600, letterSpacing: 0.5 }}>
+          <button onClick={handleDeepClick} style={{ padding: "12px 36px", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", borderRadius: 8, cursor: "pointer", fontFamily: F.display, fontSize: 16, fontWeight: 600, letterSpacing: 0.5 }}>
             Run Deep Scan
           </button>
           <div style={{ fontSize: 10, color: C.textMuted, marginTop: 8 }}>Uses 1 credit · Searches eBay, marketplaces & resale platforms</div>
+        </div>
+      )}
+
+      {/* ═══ CATEGORY PROMPT — shown for trigger categories ═══ */}
+      {showCatPrompt && trigger && (
+        <div style={{ padding: 20, background: C.bgCard, borderRadius: 12, border: `1px solid ${C.accent}40`, marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: 20 }}>{trigger.icon}</span>
+            <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 600, color: C.accent }}>{trigger.title}</div>
+          </div>
+          <div style={{ fontSize: 13, color: C.textDim, marginBottom: 16 }}>{trigger.description}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+            {trigger.fields.map(f => (
+              <div key={f.key}>
+                <div style={{ fontSize: 10, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 4 }}>{f.label} <span style={{ color: C.textMuted, fontSize: 9 }}>(optional)</span></div>
+                {f.type === "select" ? (
+                  <select value={catExtras[f.key] || ""} onChange={e => updateExtra(f.key, e.target.value)} style={{ width: "100%", padding: "10px 12px", background: C.bgSurface, border: `1px solid ${C.border}`, borderRadius: 6, color: C.text, fontFamily: F.body, fontSize: 14, outline: "none", appearance: "none" }}>
+                    <option value="">Select...</option>
+                    {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                ) : (
+                  <input type={f.type || "text"} value={catExtras[f.key] || ""} onChange={e => updateExtra(f.key, e.target.value)} placeholder={f.placeholder} style={{ width: "100%", padding: "10px 12px", background: C.bgSurface, border: `1px solid ${C.border}`, borderRadius: 6, color: C.text, fontFamily: F.mono, fontSize: 14, outline: "none" }} />
+                )}
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={handleDeepWithExtras} style={{ flex: 1, padding: "12px 20px", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", borderRadius: 8, cursor: "pointer", fontFamily: F.display, fontSize: 15, fontWeight: 600 }}>
+              Continue Deep Scan
+            </button>
+            <button onClick={handleSkip} style={{ padding: "12px 20px", background: "transparent", color: C.textMuted, border: `1px solid ${C.border}`, borderRadius: 8, cursor: "pointer", fontFamily: F.body, fontSize: 13 }}>
+              Skip
+            </button>
+          </div>
         </div>
       )}
 
@@ -836,11 +961,11 @@ export default function RelicID() {
   };
 
   // ─── DEEP ANALYSIS (on demand, lazy loaded) ──────────────
-  const loadDeepData = async (item) => {
+  const loadDeepData = async (item, userExtras) => {
     if (deepLoading) return;
     setDeepLoading(true);
     try {
-      const deep = await callDeepValuation(item.analysis);
+      const deep = await callDeepValuation(item.analysis, userExtras);
       const fallback = { low_estimate: "N/A", high_estimate: "N/A", recent_sales: [], demand_level: "Unknown", sell_speed: "Unknown", value_factors: [], market_trend: "Unknown", where_to_sell: [], notes: "Could not parse." };
       const valuation = deep ? { ...fallback, ...deep } : fallback;
 
@@ -963,15 +1088,12 @@ export default function RelicID() {
               </div>
               <button onClick={resetScan} style={{ padding: "8px 20px", background: C.bgCard, color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 6, cursor: "pointer", fontFamily: F.body, fontSize: 13, fontWeight: 600 }}>📷 Scan Another</button>
             </div>
-            <DetailView item={scanResult} onBack={resetScan} onDelete={() => { deleteItem(scanResult.id); resetScan(); }} onLoadDeep={() => loadDeepData(scanResult)} deepLoading={deepLoading} />
+            <DetailView item={scanResult} onBack={resetScan} onDelete={() => { deleteItem(scanResult.id); resetScan(); }} onLoadDeep={(extras) => loadDeepData(scanResult, extras)} deepLoading={deepLoading} />
           </div>
         )}
 
         {tab === "collection" && !detailItem && (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
-            <h2 style={{ fontFamily: F.display, fontSize: 22, fontWeight: 600, color: C.text, margin: "0 0 16px" }}>
-              Your Collection {collection.length > 0 && <span style={{ fontSize: 16, color: C.textMuted }}>({collection.length})</span>}
-            </h2>
             {collection.length === 0 ? (
               <div style={{ textAlign: "center", padding: "60px 20px", background: C.bgSurface, borderRadius: 12, border: `1px solid ${C.border}` }}>
                 <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📦</div>
@@ -979,26 +1101,99 @@ export default function RelicID() {
                 <p style={{ fontSize: 13, color: C.textMuted, margin: "0 0 20px" }}>Scan your first item to start building your collection.</p>
                 <button onClick={() => setTab("scan")} style={{ padding: "10px 28px", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", borderRadius: 6, cursor: "pointer", fontFamily: F.display, fontSize: 14, fontWeight: 600 }}>Start Scanning</button>
               </div>
-            ) : (
-              <>
-                <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
-                  <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Search items..." style={{ flex: "1 1 200px", padding: "10px 14px", background: C.bgSurface, border: `1px solid ${C.border}`, borderRadius: 6, color: C.text, fontFamily: F.body, fontSize: 13, outline: "none" }} />
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                    {categories.map(cat => <button key={cat} onClick={() => setFilterCat(cat)} style={{ padding: "6px 14px", fontSize: 11, fontFamily: F.mono, borderRadius: 4, background: filterCat === cat ? C.accentGlow : "transparent", color: filterCat === cat ? C.accent : C.textMuted, border: `1px solid ${filterCat === cat ? C.accentDim : C.border}`, cursor: "pointer" }}>{cat}</button>)}
+            ) : (() => {
+              const stats = getCollectionStats(collection);
+              return (
+                <>
+                  {/* ═══ DOPAMINE HEADER ═══ */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
+                    <div style={{ padding: "16px 12px", background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, textAlign: "center" }}>
+                      <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 4 }}>Collection Value</div>
+                      <div style={{ fontFamily: F.display, fontSize: 26, fontWeight: 700, color: C.accent }}>${stats.totalValue.toLocaleString()}</div>
+                    </div>
+                    <div style={{ padding: "16px 12px", background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, textAlign: "center" }}>
+                      <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 4 }}>Flip Potential</div>
+                      <div style={{ fontFamily: F.display, fontSize: 26, fontWeight: 700, color: stats.totalProfit > 0 ? C.buy : C.textMuted }}>{stats.totalProfit > 0 ? "+" : ""}${stats.totalProfit.toLocaleString()}</div>
+                    </div>
+                    <div style={{ padding: "16px 12px", background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, textAlign: "center" }}>
+                      <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 4 }}>Items</div>
+                      <div style={{ fontFamily: F.display, fontSize: 26, fontWeight: 700, color: C.text }}>{stats.count}</div>
+                    </div>
                   </div>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
-                  {filtered.map(item => <ResultCard key={item.id} item={item} compact onClick={() => setDetailItem(item)} />)}
-                </div>
-                {filtered.length === 0 && <p style={{ textAlign: "center", color: C.textMuted, fontSize: 14, padding: 40 }}>No items match.</p>}
-              </>
-            )}
+
+                  {/* ═══ HIGHLIGHT STRIP ═══ */}
+                  {(stats.bestFind || stats.highestProfit || stats.needsReview) && (
+                    <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 8, marginBottom: 20, WebkitOverflowScrolling: "touch" }}>
+                      {stats.bestFind && (() => {
+                        const ba = stats.bestFind.analysis;
+                        const bv = stats.bestFind.valuation;
+                        const bLow = parseDollar(bv?.low_estimate ?? ba?.low_estimate);
+                        const bHigh = parseDollar(bv?.high_estimate ?? ba?.high_estimate);
+                        const avg = bLow != null && bHigh != null ? Math.round((bLow + bHigh) / 2) : null;
+                        return (
+                          <div onClick={() => setDetailItem(stats.bestFind)} style={{ flexShrink: 0, width: 160, padding: 12, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.accent}30`, cursor: "pointer" }}>
+                            <div style={{ fontSize: 11, color: C.accent, fontFamily: F.mono, marginBottom: 6 }}>🔥 Best Find</div>
+                            {stats.bestFind.thumbnail && <div style={{ width: "100%", aspectRatio: "1", borderRadius: 6, overflow: "hidden", marginBottom: 8, background: C.bgSurface }}><img src={stats.bestFind.thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
+                            <div style={{ fontSize: 12, color: C.text, fontWeight: 600, lineHeight: 1.3, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ba?.item_name}</div>
+                            {avg != null && <div style={{ fontSize: 14, fontFamily: F.display, fontWeight: 700, color: C.accent }}>${avg}</div>}
+                          </div>
+                        );
+                      })()}
+                      {stats.highestProfit && stats.highestProfit.askingPrice != null && (() => {
+                        const ha = stats.highestProfit.analysis;
+                        const hv = stats.highestProfit.valuation;
+                        const hLow = parseDollar(hv?.low_estimate ?? ha?.low_estimate);
+                        const hHigh = parseDollar(hv?.high_estimate ?? ha?.high_estimate);
+                        const profit = hLow != null && hHigh != null ? Math.round((hLow + hHigh) / 2 - stats.highestProfit.askingPrice) : null;
+                        return profit != null && profit > 0 ? (
+                          <div onClick={() => setDetailItem(stats.highestProfit)} style={{ flexShrink: 0, width: 160, padding: 12, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.buy}30`, cursor: "pointer" }}>
+                            <div style={{ fontSize: 11, color: C.buy, fontFamily: F.mono, marginBottom: 6 }}>💰 Top Profit</div>
+                            {stats.highestProfit.thumbnail && <div style={{ width: "100%", aspectRatio: "1", borderRadius: 6, overflow: "hidden", marginBottom: 8, background: C.bgSurface }}><img src={stats.highestProfit.thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
+                            <div style={{ fontSize: 12, color: C.text, fontWeight: 600, lineHeight: 1.3, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ha?.item_name}</div>
+                            <div style={{ fontSize: 14, fontFamily: F.display, fontWeight: 700, color: C.buy }}>+${profit}</div>
+                          </div>
+                        ) : null;
+                      })()}
+                      {stats.needsReview && (
+                        <div onClick={() => setDetailItem(stats.needsReview)} style={{ flexShrink: 0, width: 160, padding: 12, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.danger}30`, cursor: "pointer" }}>
+                          <div style={{ fontSize: 11, color: C.danger, fontFamily: F.mono, marginBottom: 6 }}>⚠️ Needs Review</div>
+                          {stats.needsReview.thumbnail && <div style={{ width: "100%", aspectRatio: "1", borderRadius: 6, overflow: "hidden", marginBottom: 8, background: C.bgSurface }}><img src={stats.needsReview.thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>}
+                          <div style={{ fontSize: 12, color: C.text, fontWeight: 600, lineHeight: 1.3, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{stats.needsReview.analysis?.item_name}</div>
+                          <div style={{ fontSize: 11, color: C.danger }}>Low confidence</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ═══ SORT & FILTER ═══ */}
+                  <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+                    <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Search items..." style={{ flex: "1 1 200px", padding: "10px 14px", background: C.bgSurface, border: `1px solid ${C.border}`, borderRadius: 6, color: C.text, fontFamily: F.body, fontSize: 13, outline: "none" }} />
+                  </div>
+                  {categories.length > 2 && (
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 16 }}>
+                      {categories.map(cat => <button key={cat} onClick={() => setFilterCat(cat)} style={{ padding: "5px 12px", fontSize: 10, fontFamily: F.mono, borderRadius: 4, background: filterCat === cat ? C.accentGlow : "transparent", color: filterCat === cat ? C.accent : C.textMuted, border: `1px solid ${filterCat === cat ? C.accentDim : C.border}`, cursor: "pointer" }}>{cat}</button>)}
+                    </div>
+                  )}
+
+                  {/* ═══ ITEM GRID ═══ */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
+                    {filtered.map(item => <ResultCard key={item.id} item={item} compact onClick={() => setDetailItem(item)} />)}
+                  </div>
+                  {filtered.length === 0 && <p style={{ textAlign: "center", color: C.textMuted, fontSize: 14, padding: 40 }}>No items match.</p>}
+
+                  {/* ═══ FLOATING SCAN BUTTON ═══ */}
+                  <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10 }}>
+                    <button onClick={() => setTab("scan")} style={{ width: 56, height: 56, borderRadius: 28, background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", cursor: "pointer", fontSize: 24, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px rgba(201,165,85,0.4)" }}>+</button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         )}
 
         {tab === "collection" && detailItem && (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
-            <DetailView item={detailItem} onBack={() => setDetailItem(null)} onDelete={() => deleteItem(detailItem.id)} onLoadDeep={() => loadDeepData(detailItem)} deepLoading={deepLoading} />
+            <DetailView item={detailItem} onBack={() => setDetailItem(null)} onDelete={() => deleteItem(detailItem.id)} onLoadDeep={(extras) => loadDeepData(detailItem, extras)} deepLoading={deepLoading} />
           </div>
         )}
 
