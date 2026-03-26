@@ -1,12 +1,12 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "RelicID — AI-Powered Antique Identification & Valuation",
-  description: "Snap a photo of any antique. Get instant identification, market value, and BUY/PASS verdicts powered by AI and live auction data.",
-  keywords: "antique identifier, antique valuation, antique appraisal, antique scanner, relic identification",
+  title: "RelicID — Scan Anything. See What It's Worth.",
+  description: "Point your camera at any item and instantly get an ID, real market value, and a clear BUY or PASS recommendation. Works on clothes, collectibles, electronics, and more.",
+  keywords: "item identifier, value scanner, price checker, what is this worth, thrift finds, resale value, flip profit, garage sale app",
   openGraph: {
-    title: "RelicID — Snap it. Know it. Flip it.",
-    description: "AI-powered antique identification and valuation. Get instant BUY/PASS verdicts with real market data.",
+    title: "RelicID — Scan Anything. See What It's Worth.",
+    description: "AI-powered identification and valuation. Snap a photo, get real market value, and know instantly if it's a good deal.",
     url: "https://getrelicid.com",
     siteName: "RelicID",
     type: "website",
