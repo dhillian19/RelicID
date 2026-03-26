@@ -102,7 +102,7 @@ CRITICAL SEARCH RULES:
 1. Use the Suggested Search query as your starting point. If it's specific (includes model numbers, set names, card numbers), search for that EXACT item.
 2. Search for SOLD/COMPLETED listings, not just active listings. Sold prices are real market data. Active listings are just asking prices.
 3. Match the item's condition when pulling comps. If the item is raw/ungraded, prioritize raw/ungraded sold prices. Do NOT mix graded prices (PSA 8, BGS 9, etc.) with raw prices — they are completely different markets.
-4. For each sale you report, include the SOURCE URL from your search results. This is critical — users need to verify the data.
+4. For each sale you report, include the platform, approximate date, and a brief description. Do NOT include URLs — they will be auto-generated from the item's search query.
 5. If you find conflicting prices, weight recent sold prices over active listings, and condition-matched comps over mismatched ones.
 6. If the Object Type is "Printed Media", search for the print/poster/media itself — NOT the physical item it depicts. A poster of a toy is worth poster prices, not toy prices.
 7. If the Object Type is "Packaging Only", search for sealed/boxed pricing if applicable, and note that contents cannot be verified.
@@ -122,8 +122,8 @@ Respond ONLY with this JSON (no markdown, no backticks):
   "low_estimate": 25,
   "high_estimate": 150,
   "recent_sales": [
-    {"price": "$45", "platform": "eBay", "date": "Mar 15, 2026", "description": "Same item, raw/ungraded, similar condition", "url": "https://www.ebay.com/itm/..."},
-    {"price": "$60", "platform": "TCGPlayer", "date": "Mar 10, 2026", "description": "Near Mint condition listing", "url": "https://www.tcgplayer.com/..."}
+    {"price": "$45", "platform": "eBay", "date": "Mar 15, 2026", "description": "Same item, raw/ungraded, similar condition"},
+    {"price": "$60", "platform": "TCGPlayer", "date": "Mar 10, 2026", "description": "Near Mint condition listing"}
   ],
   "demand_level": "High",
   "sell_speed": "Fast",
@@ -133,7 +133,7 @@ Respond ONLY with this JSON (no markdown, no backticks):
   "notes": "Any important caveats about condition, grading, edition, or market volatility"
 }
 
-IMPORTANT: low_estimate and high_estimate must be plain numbers reflecting the item's ACTUAL CONDITION (not best-case graded prices). recent_sales must be an array of objects with price, platform, date, description, and url fields. Only include sales/listings you actually found — never invent data. If a URL is not available for a sale, set url to null.`;
+IMPORTANT: low_estimate and high_estimate must be plain numbers reflecting the item's ACTUAL CONDITION (not best-case graded prices). recent_sales must be an array of objects with price, platform, date, and description fields. Only include sales/listings you actually found — never invent data.`;
 };
 
 // ─── CATEGORY TRIGGER SYSTEM ──────────────────────────────
@@ -208,6 +208,22 @@ const FONT_LINK = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:w
 const FREE_SCAN_LIMIT = 3;
 const CACHE_TTL_MS = 48 * 60 * 60 * 1000; // 48 hours
 const CACHE_VERSION = "v2"; // bump to invalidate old cache
+
+// ─── PLATFORM SEARCH LINKS ──────────────────────────────
+function buildSearchUrl(platform, query) {
+  const q = encodeURIComponent(query);
+  switch (platform?.toLowerCase()) {
+    case "ebay": return `https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Complete=1&LH_Sold=1&_sop=13`;
+    case "tcgplayer": return `https://www.tcgplayer.com/search/all/product?q=${q}`;
+    case "mercari": return `https://www.mercari.com/search/?keyword=${q}`;
+    case "poshmark": return `https://poshmark.com/search?query=${q}`;
+    case "etsy": return `https://www.etsy.com/search?q=${q}`;
+    case "amazon": return `https://www.amazon.com/s?k=${q}`;
+    case "stockx": return `https://stockx.com/search?s=${q}`;
+    case "goat": return `https://www.goat.com/search?query=${q}`;
+    default: return `https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Complete=1&LH_Sold=1&_sop=13`;
+  }
+}
 
 // ─── IMAGE COMPRESSION ────────────────────────────────────
 function compressImage(dataUrl, maxWidth = 1024, quality = 0.75) {
@@ -458,7 +474,7 @@ function ConfidenceBar({ percent }) {
   );
 }
 
-function RecentSales({ sales, loading, isUnique }) {
+function RecentSales({ sales, loading, isUnique, searchQuery }) {
   const title = isUnique ? "Comparable Sales" : "Recent Sales";
   if (loading) return (
     <div style={{ padding: 16, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 16, textAlign: "center" }}>
@@ -476,24 +492,30 @@ function RecentSales({ sales, loading, isUnique }) {
     <div style={{ padding: 16, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 16 }}>
       <div style={{ fontSize: 9, fontFamily: F.mono, color: C.accent, textTransform: "uppercase", letterSpacing: 2, marginBottom: 10 }}>{title}</div>
       {sales.map((s, i) => {
-        // Handle both old string format and new object format
         const isObject = typeof s === "object" && s !== null;
         const text = isObject
           ? `${s.price || "?"} on ${s.platform || "Unknown"} (${s.date || "Recently"}) — ${s.description || "Similar item"}`
           : String(s);
-        const url = isObject ? s.url : null;
         return (
           <div key={i} style={{ fontSize: 13, color: C.text, padding: "8px 0", borderBottom: i < sales.length - 1 ? `1px solid ${C.border}` : "none", display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ color: C.accentDim, flexShrink: 0 }}>•</span>
             <span style={{ flex: 1 }}>{text}</span>
-            {url && (
-              <a href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0, fontSize: 11, fontFamily: F.mono, padding: "3px 8px", borderRadius: 4, background: C.accentGlow, color: C.accent, border: `1px solid ${C.accentDim}40`, textDecoration: "none", cursor: "pointer" }}>
-                View →
-              </a>
-            )}
           </div>
         );
       })}
+      {searchQuery && (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8 }}>Verify Prices</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <a href={buildSearchUrl("ebay", searchQuery)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, fontFamily: F.mono, padding: "5px 12px", borderRadius: 5, background: C.accentGlow, color: C.accent, border: `1px solid ${C.accentDim}40`, textDecoration: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+              eBay Sold →
+            </a>
+            <a href={buildSearchUrl("mercari", searchQuery)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, fontFamily: F.mono, padding: "5px 12px", borderRadius: 5, background: C.accentGlow, color: C.accent, border: `1px solid ${C.accentDim}40`, textDecoration: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+              Mercari →
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -582,7 +604,7 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
       txt += `\n${"─".repeat(40)}\nVALUATION${hasDeep ? " (Live Market)" : " (AI Estimate)"}\n\nValue: $${useLow} — $${useHigh}\n`;
       if (v?.recent_sales?.length) txt += `\nRecent Sales:\n${v.recent_sales.map(s => {
         if (typeof s === "string") return `  • ${s}`;
-        return `  • ${s.price || "?"} on ${s.platform || "Unknown"} (${s.date || "Recently"}) — ${s.description || "Similar item"}${s.url ? `\n    ${s.url}` : ""}`;
+        return `  • ${s.price || "?"} on ${s.platform || "Unknown"} (${s.date || "Recently"}) — ${s.description || "Similar item"}`;
       }).join("\n")}\n`;
       if (v?.where_to_sell?.length) txt += `\nVenues: ${v.where_to_sell.join(", ")}\n`;
     }
@@ -780,7 +802,7 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
       {/* ═══ DEEP SCAN DATA — only after deep scan ═══ */}
       {hasDeep && (
         <>
-          <RecentSales sales={v?.recent_sales} loading={false} isUnique={!!a?.is_unique} />
+          <RecentSales sales={v?.recent_sales} loading={false} isUnique={!!a?.is_unique} searchQuery={a?.search_query || a?.item_name} />
           {v?.value_factors?.length > 0 && (
             <div style={{ padding: 14, background: C.bgCard, borderRadius: 8, border: `1px solid ${C.border}`, marginBottom: 10 }}>
               <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 2, marginBottom: 6 }}>Value Factors</div>
@@ -790,7 +812,9 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
           {v?.where_to_sell?.length > 0 && (
             <div style={{ padding: 14, background: C.bgCard, borderRadius: 8, border: `1px solid ${C.border}`, marginBottom: 16 }}>
               <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 2, marginBottom: 6 }}>Best Places to Sell</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{v.where_to_sell.map((s, i) => <span key={i} style={{ fontSize: 11, padding: "4px 10px", background: C.bg, borderRadius: 4, color: C.accent, border: `1px solid ${C.accentDim}40` }}>{s}</span>)}</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{v.where_to_sell.map((s, i) => (
+                <a key={i} href={buildSearchUrl(s, a?.search_query || a?.item_name)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, padding: "4px 10px", background: C.bg, borderRadius: 4, color: C.accent, border: `1px solid ${C.accentDim}40`, textDecoration: "none", cursor: "pointer" }}>{s} →</a>
+              ))}</div>
             </div>
           )}
           {v?.notes && <div style={{ fontSize: 12, color: C.textMuted, fontStyle: "italic", marginBottom: 16 }}>⚠️ {v.notes}</div>}
