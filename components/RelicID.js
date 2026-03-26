@@ -32,7 +32,7 @@ IF Physical Object → proceed with full identification. Be as specific as possi
 
 IF Printed Media → describe what is depicted, identify the type (poster, art print, playmat, promotional material), note any value it may have as printed media. Do NOT treat it as the physical item it depicts.
 
-IF Screen Capture → note this is a photo of a screen. Describe what's shown. Do NOT value it as a physical item. Set confidence_percent to 30 or lower.
+IF Screen Capture → note this is a photo of a screen, BUT still identify and value the item SHOWN on the screen as if you were looking at the real thing. Users often screenshot marketplace listings or social media posts to check value before buying. Identify the depicted item as specifically as possible, estimate its value, but set confidence_percent lower (40-60) since you can't verify condition or authenticity from a screenshot. Add a note in object_type_note explaining what detail is lost (e.g. "Cannot assess true condition, color accuracy, or authenticity from a screenshot").
 
 IF Packaging Only → identify the product from the packaging, but note that the actual item is not visible. Value should reflect "sealed/boxed" pricing if applicable, or note that contents cannot be verified.
 
@@ -48,7 +48,7 @@ Respond ONLY with this JSON (no markdown, no backticks):
   "object_type": "One of: Physical Object, Printed Media, Screen Capture, Packaging Only",
   "object_type_confidence": "High, Medium, or Low",
   "object_type_note": "Brief explanation if confidence is not High, or if there's ambiguity. null if straightforward.",
-  "item_name": "Most specific name possible. For cards: 'Venusaur 15/102 Base Set Unlimited Holo'. For shoes: 'Nike Air Jordan 1 Retro High OG Chicago 2015'. For vintage items: 'Roseville Pottery Pinecone Vase 712-10 Brown'. For printed media: 'Poster depicting [subject]'. Always include identifying numbers/editions when visible.",
+  "item_name": "Most specific name possible. For cards: 'Venusaur 15/102 Base Set Unlimited Holo'. For shoes: 'Nike Air Jordan 1 Retro High OG Chicago 2015'. For vintage items: 'Roseville Pottery Pinecone Vase 712-10 Brown'. For printed media: 'Poster depicting [subject]'. For screen captures: name the DEPICTED ITEM, not the screenshot itself (e.g. 'WWF Wrestling Challenge Arcade Cabinet' not 'Screenshot of WWF game'). Always include identifying numbers/editions when visible.",
   "category": "One of: Furniture, Pottery/Porcelain, Glassware, Coins/Currency, Jewelry/Metals, Toys/Games, Art/Prints, Textiles, Books/Ephemera, Tools/Instruments, Clothing/Accessories, Electronics, Trading Cards, Sneakers/Footwear, Other",
   "estimated_era": "Date range or specific year",
   "style_period": "Style, period, set name, or product line",
@@ -68,7 +68,7 @@ Respond ONLY with this JSON (no markdown, no backticks):
   "market_trend": "Rising, Stable, or Declining"
 }
 
-IMPORTANT: low_estimate and high_estimate are plain numbers. confidence_percent is a number 0-100. If this is a screen capture, set estimates to 0. Be as specific as humanly possible in item_name and search_query — vague descriptions produce bad valuations.`;
+IMPORTANT: low_estimate and high_estimate are plain numbers. confidence_percent is a number 0-100. For screen captures, estimate the value of the DEPICTED ITEM but use a wider range to reflect uncertainty. Be as specific as humanly possible in item_name and search_query — vague descriptions produce bad valuations.`;
 
 // DEEP prompt — full valuation with web search (expensive, only on demand)
 const DEEP_PROMPT = (info) => `You are a market valuation researcher. Search for recent SOLD prices and current listings for this specific item.
@@ -92,6 +92,7 @@ CRITICAL SEARCH RULES:
 5. If you find conflicting prices, weight recent sold prices over active listings, and condition-matched comps over mismatched ones.
 6. If the Object Type is "Printed Media", search for the print/poster/media itself — NOT the physical item it depicts. A poster of a toy is worth poster prices, not toy prices.
 7. If the Object Type is "Packaging Only", search for sealed/boxed pricing if applicable, and note that contents cannot be verified.
+8. If the Object Type is "Screen Capture", search for the DEPICTED ITEM as if it were a physical object. The user is checking value before buying. Note in your response that condition cannot be confirmed from a screenshot.
 
 Respond ONLY with this JSON (no markdown, no backticks):
 {
@@ -452,8 +453,8 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
   const lowVal = hasDeep && deepLow != null ? deepLow : quickLow;
   const highVal = hasDeep && deepHigh != null ? deepHigh : quickHigh;
 
-  // Decision ONLY from deep data, and only for physical objects
-  const decision = hasDeep && isPhysical && item.askingPrice != null ? getDecision(item.askingPrice, deepLow, deepHigh) : null;
+  // Decision ONLY from deep data
+  const decision = hasDeep && item.askingPrice != null ? getDecision(item.askingPrice, deepLow, deepHigh) : null;
   const confPercent = a?.confidence_percent || 60;
 
   // Check if deep values differ significantly from quick
@@ -490,13 +491,13 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
 
       {/* ═══ OBJECT TYPE WARNING — for non-physical items ═══ */}
       {!isPhysical && (
-        <div style={{ padding: "14px 18px", background: isScreen ? `${C.danger}10` : `${C.info}10`, borderRadius: 10, border: `1px solid ${isScreen ? C.danger + "30" : C.info + "30"}`, marginBottom: 16 }}>
+        <div style={{ padding: "14px 18px", background: `${C.info}10`, borderRadius: 10, border: `1px solid ${C.info}30`, marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
             <span style={{ fontSize: 16 }}>{isScreen ? "📱" : objectType === "Printed Media" ? "🖼️" : "📦"}</span>
-            <span style={{ fontSize: 12, fontFamily: F.mono, fontWeight: 600, color: isScreen ? C.danger : C.info, textTransform: "uppercase", letterSpacing: 1 }}>{objectType}</span>
+            <span style={{ fontSize: 12, fontFamily: F.mono, fontWeight: 600, color: C.info, textTransform: "uppercase", letterSpacing: 1 }}>{objectType}</span>
           </div>
           <div style={{ fontSize: 13, color: C.textDim, lineHeight: 1.5 }}>
-            {isScreen && "This appears to be a photo of a screen or display — not a physical item. Values shown are not reliable."}
+            {isScreen && "This appears to be a screenshot. We've identified and valued the item shown, but condition, color accuracy, and authenticity can't be verified from a screen photo."}
             {objectType === "Printed Media" && "This appears to be printed media (poster, print, or flat image) rather than a physical object. Value reflects the print itself, not the item depicted."}
             {objectType === "Packaging Only" && "Only packaging is visible — the actual item inside cannot be verified from these photos."}
           </div>
@@ -504,16 +505,16 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
         </div>
       )}
 
-      {/* ═══ DECISION — only after Deep Scan, only for physical items ═══ */}
-      {isPhysical && hasDeep ? (
+      {/* ═══ DECISION — only after Deep Scan ═══ */}
+      {hasDeep ? (
         <DecisionBadge decision={decision} askingPrice={item.askingPrice} lowVal={deepLow} highVal={deepHigh} />
-      ) : isPhysical && !hasDeep ? (
+      ) : (
         /* Quick Scan: prompt to run deep scan for decisions */
         <div style={{ padding: "16px 20px", background: C.bgSurface, borderRadius: 12, border: `1px dashed ${C.border}`, textAlign: "center", marginBottom: 20 }}>
           <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 4 }}>💡 Run a <strong style={{ color: C.accent }}>Deep Scan</strong> to get BUY/PASS verdict and flip profit</div>
           {item.askingPrice != null && <div style={{ fontSize: 11, color: C.textMuted }}>Asking price of ${item.askingPrice} saved — will be evaluated after Deep Scan</div>}
         </div>
-      ) : null}
+      )}
 
       {/* ═══ CONFIDENCE — always shown ═══ */}
       <ConfidenceBar percent={confPercent} />
@@ -528,7 +529,7 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
       {/* ═══ ITEM TITLE & META ═══ */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
         <span style={{ fontSize: 11, fontFamily: F.mono, padding: "3px 10px", borderRadius: 4, background: C.accentGlow, color: C.accent, border: `1px solid ${C.accentDim}` }}>{a?.category}</span>
-        {!isPhysical && <span style={{ fontSize: 11, fontFamily: F.mono, padding: "3px 10px", borderRadius: 4, color: isScreen ? C.danger : C.info, border: `1px solid ${isScreen ? C.danger : C.info}40`, background: isScreen ? `${C.danger}10` : `${C.info}10` }}>{objectType}</span>}
+        {!isPhysical && <span style={{ fontSize: 11, fontFamily: F.mono, padding: "3px 10px", borderRadius: 4, color: C.info, border: `1px solid ${C.info}40`, background: `${C.info}10` }}>{objectType}</span>}
         <span style={{ fontSize: 11, fontFamily: F.mono, padding: "3px 10px", borderRadius: 4, color: hasDeep ? C.success : C.textMuted, border: `1px solid ${hasDeep ? C.success : C.textMuted}40`, background: hasDeep ? `${C.success}10` : "transparent" }}>
           {hasDeep ? "✓ Deep Scan" : "⚡ Quick Scan"}
         </span>
@@ -566,8 +567,8 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
         </div>
       )}
 
-      {/* ═══ DEEP SCAN CTA — prominent when no deep data, hidden for screen captures ═══ */}
-      {!hasDeep && !deepLoading && !isScreen && (
+      {/* ═══ DEEP SCAN CTA — prominent when no deep data ═══ */}
+      {!hasDeep && !deepLoading && (
         <div style={{ padding: 24, background: `linear-gradient(135deg, ${C.accentGlow}, ${C.bgCard})`, borderRadius: 12, border: `1px solid ${C.accent}40`, marginBottom: 20, textAlign: "center" }}>
           <div style={{ fontSize: 20, marginBottom: 8 }}>🔬</div>
           <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: C.accent, marginBottom: 6 }}>Get Real Market Value</div>
