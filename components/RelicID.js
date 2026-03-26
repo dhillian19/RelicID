@@ -4,28 +4,34 @@ import { useState, useRef, useCallback, useEffect } from "react";
 
 // ─── PROMPTS ───────────────────────────────────────────────
 // LIGHT prompt — quick ID + basic value estimate (1 API call, no web search)
-const LIGHT_PROMPT = (photoCount) => `You are an expert antiques appraiser. Quickly identify ${photoCount > 1 ? "these items" : "this item"} and estimate value.
+const LIGHT_PROMPT = (photoCount) => `You are an expert product identifier and valuation specialist. Identify ${photoCount > 1 ? "these items" : "this item"} as specifically as possible and estimate value.
 
 CRITICAL RULES:
-- Only name a specific pattern, motif, or symbol if you are 100% certain of the identification. If there is ANY doubt, describe what you physically see instead (e.g., "geometric center medallion with grid-like design" NOT a specific symbol name).
-- NEVER speculate about symbols, logos, religious motifs, or culturally sensitive imagery. Describe shapes and design elements objectively using neutral geometric language (e.g., "crossed lines", "radiating pattern", "grid motif").
-- For maker attribution, only name a specific maker if you see a visible mark, stamp, or signature. Otherwise list plausible candidates.
-- Be honest about what you CAN'T determine. "Cannot confirm from these photos" is better than a wrong guess.
+- Your #1 job is PRECISE IDENTIFICATION. For any collectible, find the EXACT product: model number, set name, card number, edition, version, SKU, ISBN, year of release, or any other uniquely identifying detail visible in the photos.
+- For trading cards: identify the EXACT card name, set (e.g. "Base Set", "Jungle", "Fossil"), card number (e.g. "15/102"), edition (1st Edition, Unlimited, Shadowless), language, and whether it is holographic. Look for set symbols, card numbers, and edition stamps.
+- For branded items (shoes, hats, clothing, electronics, toys): identify brand, exact model/product name, colorway, size if visible, and approximate release year.
+- For vintage or older items: identify maker marks, stamps, signatures, patent numbers, or any other identifying marks. If none visible, list plausible makers.
+- Only name a specific pattern, motif, or symbol if you are 100% certain. If there is ANY doubt, describe what you physically see instead.
+- NEVER speculate about religious motifs or culturally sensitive imagery.
+- Be honest about what you CAN'T determine. "Cannot confirm from photos" is better than a wrong guess.
+- For condition: note whether the item appears graded/slabbed/authenticated or is raw/ungraded/loose. This dramatically affects value.
 ${photoCount > 1 ? "- Consider ALL photos together." : ""}
 
 Respond ONLY with this JSON (no markdown, no backticks):
 {
-  "item_name": "Plain physical description only. NO unconfirmed pattern names, NO symbol names.",
-  "category": "One of: Furniture, Pottery/Porcelain, Glassware, Coins/Currency, Jewelry/Metals, Toys/Games, Art/Prints, Textiles, Books/Ephemera, Tools/Instruments, Other",
-  "estimated_era": "Date range",
-  "style_period": "Style or period",
+  "item_name": "Most specific name possible. For cards: 'Venusaur 15/102 Base Set Unlimited Holo'. For shoes: 'Nike Air Jordan 1 Retro High OG Chicago 2015'. For vintage items: 'Roseville Pottery Pinecone Vase 712-10 Brown'. Always include identifying numbers/editions.",
+  "category": "One of: Furniture, Pottery/Porcelain, Glassware, Coins/Currency, Jewelry/Metals, Toys/Games, Art/Prints, Textiles, Books/Ephemera, Tools/Instruments, Clothing/Accessories, Electronics, Other",
+  "estimated_era": "Date range or specific year",
+  "style_period": "Style, period, set name, or product line",
   "likely_origin": "Country or region",
-  "maker": "Only if confirmed by marks. Otherwise: 'Unconfirmed — possible: [X, Y, Z].'",
+  "maker": "Brand or maker. Only name specific maker if confirmed by visible marks. Otherwise: 'Unconfirmed — possible: [X, Y, Z].'",
   "materials": ["materials"],
-  "condition_notes": "Observable condition",
-  "key_features": ["Describe what you SEE using neutral language — shapes, textures, construction details. Do NOT assign names to motifs or symbols."],
+  "condition_notes": "Observable condition. State if graded/slabbed or raw/ungraded. Note specific flaws: edge wear, scratches, fading, chips, etc.",
+  "condition_grade": "One of: Mint, Near Mint, Excellent, Very Good, Good, Fair, Poor — or 'Graded [grade]' if in a grading slab",
+  "key_features": ["Specific identifying details you can see — card numbers, set symbols, edition stamps, maker marks, model numbers, serial numbers, signatures, tags, labels"],
+  "search_query": "The most effective search query to find this exact item's market value. Be specific: include brand, model, set, number, edition, condition keywords. Example: 'Venusaur 15/102 Base Set Unlimited raw sold' or 'Nike Air Jordan 1 Chicago 2015 used sold'.",
   "confidence_percent": 75,
-  "description": "2-3 sentence summary using neutral descriptive language. Describe design elements by appearance, not by assumed cultural or symbolic names.",
+  "description": "2-3 sentence summary. Lead with the specific identification, then describe condition and notable features.",
   "low_estimate": 20,
   "high_estimate": 100,
   "demand_level": "High, Medium, or Low",
@@ -33,32 +39,45 @@ Respond ONLY with this JSON (no markdown, no backticks):
   "market_trend": "Rising, Stable, or Declining"
 }
 
-IMPORTANT: low_estimate and high_estimate are plain numbers. confidence_percent is a number 0-100.`;
+IMPORTANT: low_estimate and high_estimate are plain numbers. confidence_percent is a number 0-100. Be as specific as humanly possible in item_name and search_query — vague descriptions produce bad valuations.`;
 
 // DEEP prompt — full valuation with web search (expensive, only on demand)
-const DEEP_PROMPT = (info) => `You are an antiques valuation researcher. Search for recent auction results and market values for this item.
+const DEEP_PROMPT = (info) => `You are a market valuation researcher. Search for recent SOLD prices and current listings for this specific item.
 
 Item: ${info.item_name}
 Era: ${info.estimated_era}
-Style: ${info.style_period}
+Style/Set: ${info.style_period}
 Origin: ${info.likely_origin}
-Maker: ${info.maker}
+Maker/Brand: ${info.maker}
 Category: ${info.category}
+Condition: ${info.condition_notes || "Unknown"}
+${info.condition_grade ? `Condition Grade: ${info.condition_grade}` : ""}
+${info.search_query ? `Suggested Search: ${info.search_query}` : ""}
 
-Search for real sold prices. Respond ONLY with this JSON (no markdown, no backticks):
+CRITICAL SEARCH RULES:
+1. Use the Suggested Search query as your starting point. If it's specific (includes model numbers, set names, card numbers), search for that EXACT item.
+2. Search for SOLD/COMPLETED listings, not just active listings. Sold prices are real market data. Active listings are just asking prices.
+3. Match the item's condition when pulling comps. If the item is raw/ungraded, prioritize raw/ungraded sold prices. Do NOT mix graded prices (PSA 8, BGS 9, etc.) with raw prices — they are completely different markets.
+4. For each sale you report, include the SOURCE URL from your search results. This is critical — users need to verify the data.
+5. If you find conflicting prices, weight recent sold prices over active listings, and condition-matched comps over mismatched ones.
+
+Respond ONLY with this JSON (no markdown, no backticks):
 {
   "low_estimate": 25,
   "high_estimate": 150,
-  "recent_sales": ["$45 on eBay (3 days ago) - similar bowl", "$60 at auction (2 weeks ago) - comparable piece"],
+  "recent_sales": [
+    {"price": "$45", "platform": "eBay", "date": "Mar 15, 2026", "description": "Same item, raw/ungraded, similar condition", "url": "https://www.ebay.com/itm/..."},
+    {"price": "$60", "platform": "TCGPlayer", "date": "Mar 10, 2026", "description": "Near Mint condition listing", "url": "https://www.tcgplayer.com/..."}
+  ],
   "demand_level": "High",
   "sell_speed": "Fast",
-  "value_factors": ["Condition drives price", "Rare color commands premium"],
+  "value_factors": ["Factor 1", "Factor 2"],
   "market_trend": "Stable",
-  "where_to_sell": ["eBay", "LiveAuctioneers"],
-  "notes": "Any caveats"
+  "where_to_sell": ["eBay", "TCGPlayer"],
+  "notes": "Any important caveats about condition, grading, edition, or market volatility"
 }
 
-IMPORTANT: low_estimate and high_estimate must be plain numbers. recent_sales should be simple strings. Keep concise.`;
+IMPORTANT: low_estimate and high_estimate must be plain numbers reflecting the item's ACTUAL CONDITION (not best-case graded prices). recent_sales must be an array of objects with price, platform, date, description, and url fields. Only include sales/listings you actually found — never invent data. If a URL is not available for a sale, set url to null.`;
 
 // ─── DESIGN SYSTEM ─────────────────────────────────────────
 const C = {
@@ -222,7 +241,7 @@ async function saveCollection(items) {
 
 // ─── UI COMPONENTS (unchanged) ─────────────────────────────
 function TabBar({ active, onChange, counts }) {
-  const tabs = [{ id: "scan", label: "Scan", icon: "🔍" }, { id: "collection", label: "Collection", icon: "📦", count: counts }, { id: "guide", label: "Photo Guide", icon: "📸" }];
+  const tabs = [{ id: "scan", label: "Scan", icon: "🔍" }, { id: "collection", label: "Collection", icon: "📦", count: counts }, { id: "guide", label: "Photo Tips", icon: "📸" }];
   return (
     <div style={{ display: "flex", gap: 4, background: C.bgSurface, borderRadius: 10, padding: 4, marginBottom: 32, border: `1px solid ${C.border}` }}>
       {tabs.map(t => (
@@ -311,7 +330,7 @@ function RecentSales({ sales, loading }) {
   if (loading) return (
     <div style={{ padding: 16, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 16, textAlign: "center" }}>
       <div style={{ fontSize: 9, fontFamily: F.mono, color: C.accent, textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>Recent Sales</div>
-      <div style={{ fontSize: 13, color: C.textMuted, animation: "pulse 1.5s infinite" }}>🔍 Searching auction records...</div>
+      <div style={{ fontSize: 13, color: C.textMuted, animation: "pulse 1.5s infinite" }}>🔍 Searching recent sales...</div>
     </div>
   );
   if (!sales || sales.length === 0) return (
@@ -324,8 +343,23 @@ function RecentSales({ sales, loading }) {
     <div style={{ padding: 16, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 16 }}>
       <div style={{ fontSize: 9, fontFamily: F.mono, color: C.accent, textTransform: "uppercase", letterSpacing: 2, marginBottom: 10 }}>Recent Sales</div>
       {sales.map((s, i) => {
-        const text = typeof s === "string" ? s : `${s.price || "?"} on ${s.platform || "Unknown"} (${s.time_ago || "Recently"}) — ${s.description || "Similar item"}`;
-        return <div key={i} style={{ fontSize: 13, color: C.text, padding: "8px 0", borderBottom: i < sales.length - 1 ? `1px solid ${C.border}` : "none", display: "flex", alignItems: "center", gap: 8 }}><span style={{ color: C.accentDim, flexShrink: 0 }}>•</span><span>{text}</span></div>;
+        // Handle both old string format and new object format
+        const isObject = typeof s === "object" && s !== null;
+        const text = isObject
+          ? `${s.price || "?"} on ${s.platform || "Unknown"} (${s.date || "Recently"}) — ${s.description || "Similar item"}`
+          : String(s);
+        const url = isObject ? s.url : null;
+        return (
+          <div key={i} style={{ fontSize: 13, color: C.text, padding: "8px 0", borderBottom: i < sales.length - 1 ? `1px solid ${C.border}` : "none", display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ color: C.accentDim, flexShrink: 0 }}>•</span>
+            <span style={{ flex: 1 }}>{text}</span>
+            {url && (
+              <a href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0, fontSize: 11, fontFamily: F.mono, padding: "3px 8px", borderRadius: 4, background: C.accentGlow, color: C.accent, border: `1px solid ${C.accentDim}40`, textDecoration: "none", cursor: "pointer" }}>
+                View →
+              </a>
+            )}
+          </div>
+        );
       })}
     </div>
   );
@@ -393,7 +427,7 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
   const exportText = () => {
     const useLow = hasDeep ? deepLow : quickLow;
     const useHigh = hasDeep ? deepHigh : quickHigh;
-    let txt = `RELICID APPRAISAL REPORT\n${"═".repeat(40)}\n`;
+    let txt = `RELICID VALUE REPORT\n${"═".repeat(40)}\n`;
     txt += hasDeep ? `Source: Deep Scan (live market data)\n` : `Source: Quick Scan (AI estimate — verify with Deep Scan)\n`;
     if (decision) txt += `VERDICT: ${decision}\n`;
     if (hasDeep && item.askingPrice != null) txt += `Asking Price: $${item.askingPrice}\nFlip Potential: $${getFlipProfit(item.askingPrice, useLow, useHigh)}\n`;
@@ -401,7 +435,10 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
     txt += `Description:\n${a?.description}\n\nKey Features:\n${a?.key_features?.map(f => `  • ${f}`).join("\n")}\n\nCondition:\n${a?.condition_notes}\n`;
     if (useLow != null) {
       txt += `\n${"─".repeat(40)}\nVALUATION${hasDeep ? " (Live Market)" : " (AI Estimate)"}\n\nValue: $${useLow} — $${useHigh}\n`;
-      if (v?.recent_sales?.length) txt += `\nRecent Sales:\n${v.recent_sales.map(s => `  • ${typeof s === "string" ? s : s.price}`).join("\n")}\n`;
+      if (v?.recent_sales?.length) txt += `\nRecent Sales:\n${v.recent_sales.map(s => {
+        if (typeof s === "string") return `  • ${s}`;
+        return `  • ${s.price || "?"} on ${s.platform || "Unknown"} (${s.date || "Recently"}) — ${s.description || "Similar item"}${s.url ? `\n    ${s.url}` : ""}`;
+      }).join("\n")}\n`;
       if (v?.where_to_sell?.length) txt += `\nVenues: ${v.where_to_sell.join(", ")}\n`;
     }
     txt += `\n${"─".repeat(40)}\nGenerated by RelicID · ${new Date(item.scannedAt).toLocaleDateString()} · getrelicid.com`;
@@ -483,12 +520,12 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
           <div style={{ fontSize: 20, marginBottom: 8 }}>🔬</div>
           <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: C.accent, marginBottom: 6 }}>Get Real Market Value</div>
           <div style={{ fontSize: 13, color: C.textDim, marginBottom: 14, lineHeight: 1.5 }}>
-            Searches live auction results and recent sales to give you an accurate valuation, BUY/PASS verdict, and flip profit calculation.
+            Searches real sold listings and live prices to give you an accurate valuation, BUY/PASS verdict, and flip profit calculation.
           </div>
           <button onClick={onLoadDeep} style={{ padding: "12px 36px", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", borderRadius: 8, cursor: "pointer", fontFamily: F.display, fontSize: 16, fontWeight: 600, letterSpacing: 0.5 }}>
             Run Deep Scan
           </button>
-          <div style={{ fontSize: 10, color: C.textMuted, marginTop: 8 }}>Uses 1 credit · Searches eBay, auctions & dealer listings</div>
+          <div style={{ fontSize: 10, color: C.textMuted, marginTop: 8 }}>Uses 1 credit · Searches eBay, marketplaces & resale platforms</div>
         </div>
       )}
 
@@ -496,7 +533,7 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
       {deepLoading && (
         <div style={{ padding: 24, background: C.bgCard, borderRadius: 12, border: `1px solid ${C.border}`, marginBottom: 20, textAlign: "center" }}>
           <div style={{ fontSize: 28, marginBottom: 8, animation: "pulse 1.5s infinite" }}>🔬</div>
-          <div style={{ fontFamily: F.display, fontSize: 16, color: C.accent, marginBottom: 4 }}>Searching auction records & market data...</div>
+          <div style={{ fontFamily: F.display, fontSize: 16, color: C.accent, marginBottom: 4 }}>Searching sold listings & market data...</div>
           <div style={{ fontSize: 12, color: C.textMuted }}>This may take 15–30 seconds</div>
         </div>
       )}
@@ -525,7 +562,10 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
 
       {a?.condition_notes && (
         <div style={{ padding: 14, background: C.bgCard, borderRadius: 8, border: `1px solid ${C.border}`, marginBottom: 16 }}>
-          <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 2, marginBottom: 4 }}>Condition</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 2 }}>Condition</div>
+            {a?.condition_grade && <div style={{ fontSize: 10, fontFamily: F.mono, padding: "2px 8px", borderRadius: 4, background: C.accentGlow, color: C.accent, border: `1px solid ${C.accentDim}40` }}>{a.condition_grade}</div>}
+          </div>
           <div style={{ fontSize: 14, color: C.text }}>{a.condition_notes}</div>
         </div>
       )}
@@ -570,15 +610,15 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading }) {
 function GuideView() {
   const tips = [
     { icon: "📷", title: "Front / Main View", desc: "Full item head-on with even lighting." },
-    { icon: "🔄", title: "Back / Reverse", desc: "Marks, stamps, and labels live here." },
-    { icon: "🔍", title: "Base / Marks Close-Up", desc: "Get close to any stamps or engravings." },
-    { icon: "✨", title: "Detail / Feature Shot", desc: "Unique features — carvings, joints, glaze, damage." },
+    { icon: "🔄", title: "Back / Reverse", desc: "Labels, stamps, and tags live here." },
+    { icon: "🔍", title: "Labels / Tags Close-Up", desc: "Get close to any brand marks, serial numbers, or tags." },
+    { icon: "✨", title: "Detail / Feature Shot", desc: "Unique features — wear, damage, special details." },
   ];
-  const general = ["Use natural daylight — avoid flash", "Plain contrasting background", "Keep steady — blurry marks can't be read", "Include a coin for scale on small items", "For furniture, photograph joinery", "For glass/pottery, photograph the bottom", "Shoot reflective items from multiple angles"];
+  const general = ["Use natural daylight — avoid flash", "Plain contrasting background", "Keep steady — blurry details can't be read", "Include a coin or card for scale on small items", "Capture any labels, tags, or serial numbers", "For shoes and clothing, photograph all brand tags", "Shoot reflective items from multiple angles"];
   return (
     <div>
-      <h2 style={{ fontFamily: F.display, fontSize: 26, fontWeight: 700, color: C.text, margin: "0 0 6px" }}>Photo Guide</h2>
-      <p style={{ fontSize: 14, color: C.textDim, margin: "0 0 28px" }}>Better photos = better deals.</p>
+      <h2 style={{ fontFamily: F.display, fontSize: 26, fontWeight: 700, color: C.text, margin: "0 0 6px" }}>Photo Tips</h2>
+      <p style={{ fontSize: 14, color: C.textDim, margin: "0 0 28px" }}>Better photos = better results.</p>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 32 }}>
         {tips.map((t, i) => <div key={i} style={{ padding: 16, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}` }}><div style={{ fontSize: 28, marginBottom: 8 }}>{t.icon}</div><div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 600, color: C.accent, marginBottom: 6 }}>{t.title}</div><div style={{ fontSize: 13, color: C.textDim, lineHeight: 1.5 }}>{t.desc}</div></div>)}
       </div>
@@ -603,7 +643,7 @@ export default function RelicID() {
   const [photos, setPhotos] = useState([
     { label: "Front", hint: "Main view", dataUrl: null, base64: null, mediaType: null },
     { label: "Back", hint: "Reverse side", dataUrl: null, base64: null, mediaType: null },
-    { label: "Base / Marks", hint: "Bottom marks", dataUrl: null, base64: null, mediaType: null },
+    { label: "Labels / Tags", hint: "Marks & branding", dataUrl: null, base64: null, mediaType: null },
     { label: "Detail", hint: "Close-up", dataUrl: null, base64: null, mediaType: null },
   ]);
   const [askingPrice, setAskingPrice] = useState("");
@@ -677,6 +717,7 @@ export default function RelicID() {
         confidence_percent: result.confidence_percent, description: result.description,
         low_estimate: result.low_estimate, high_estimate: result.high_estimate,
         demand_level: result.demand_level, sell_speed: result.sell_speed, market_trend: result.market_trend,
+        condition_grade: result.condition_grade, search_query: result.search_query,
       };
 
       const priceNum = askingPrice ? parseFloat(askingPrice) : null;
@@ -765,7 +806,7 @@ export default function RelicID() {
       <div style={{ position: "relative", zIndex: 1, maxWidth: 780, margin: "0 auto", padding: "28px 20px 60px" }}>
         <header style={{ textAlign: "center", marginBottom: 28 }}>
           <h1 style={{ fontFamily: F.display, fontSize: "clamp(30px, 6vw, 46px)", fontWeight: 700, margin: 0, lineHeight: 1.1, background: `linear-gradient(135deg, ${C.accent}, #e8d5a0, ${C.accentDim})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>RelicID</h1>
-          <p style={{ fontFamily: F.body, fontWeight: 300, fontSize: 14, color: C.textMuted, marginTop: 4, letterSpacing: 0.5 }}>Snap it. Know it. Flip it.</p>
+          <p style={{ fontFamily: F.body, fontWeight: 300, fontSize: 14, color: C.textMuted, marginTop: 4, letterSpacing: 0.5 }}>Scan anything. See what it's worth.</p>
         </header>
 
         <TabBar active={tab} onChange={(t) => { setTab(t); setDetailItem(null); }} counts={collection.length} />
@@ -777,7 +818,7 @@ export default function RelicID() {
               <h2 style={{ fontFamily: F.display, fontSize: 22, fontWeight: 600, color: C.text, margin: 0 }}>Upload Photos</h2>
               <div style={{ fontSize: 11, fontFamily: F.mono, color: atLimit ? C.danger : C.textMuted }}>{scansToday}/{FREE_SCAN_LIMIT} scans today</div>
             </div>
-            <p style={{ fontSize: 13, color: C.textDim, margin: "0 0 20px" }}>Add at least one photo. <span style={{ color: C.accent, cursor: "pointer" }} onClick={() => setTab("guide")}>Photo guide →</span></p>
+            <p style={{ fontSize: 13, color: C.textDim, margin: "0 0 20px" }}>Add at least one photo. <span style={{ color: C.accent, cursor: "pointer" }} onClick={() => setTab("guide")}>Photo tips →</span></p>
 
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
               {photos.map((p, i) => <PhotoSlot key={i} label={p.label} hint={p.hint} dataUrl={p.dataUrl} onAdd={(file) => addPhoto(i, file)} onRemove={() => removePhoto(i)} />)}
@@ -849,7 +890,7 @@ export default function RelicID() {
               <div style={{ textAlign: "center", padding: "60px 20px", background: C.bgSurface, borderRadius: 12, border: `1px solid ${C.border}` }}>
                 <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📦</div>
                 <p style={{ fontFamily: F.display, fontSize: 18, color: C.textDim, margin: "0 0 8px" }}>No items yet</p>
-                <p style={{ fontSize: 13, color: C.textMuted, margin: "0 0 20px" }}>Scan your first antique to start building your collection.</p>
+                <p style={{ fontSize: 13, color: C.textMuted, margin: "0 0 20px" }}>Scan your first item to start building your collection.</p>
                 <button onClick={() => setTab("scan")} style={{ padding: "10px 28px", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", borderRadius: 6, cursor: "pointer", fontFamily: F.display, fontSize: 14, fontWeight: 600 }}>Start Scanning</button>
               </div>
             ) : (
@@ -878,7 +919,7 @@ export default function RelicID() {
         {tab === "guide" && <div style={{ animation: "fadeIn 0.3s ease" }}><GuideView /></div>}
 
         <footer style={{ textAlign: "center", marginTop: 48, paddingTop: 20, borderTop: `1px solid ${C.border}` }}>
-          <p style={{ fontSize: 11, color: C.textMuted, margin: 0 }}>RelicID · AI-powered identification & valuation · Not a substitute for professional appraisal · getrelicid.com</p>
+          <p style={{ fontSize: 11, color: C.textMuted, margin: 0 }}>RelicID · AI-powered identification & valuation · Not financial advice · getrelicid.com</p>
         </footer>
       </div>
     </div>
