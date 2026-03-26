@@ -62,7 +62,7 @@ function Hero() {
         Scan anything.<br/>See what it's worth.
       </h1>
       <p className="reveal" style={{ fontSize: "clamp(16px, 2.5vw, 20px)", color: C.textDim, maxWidth: 560, margin: "0 auto 40px", lineHeight: 1.6, fontWeight: 300 }}>
-        Point your camera at any item and instantly get an ID, real market value, and a clear BUY or PASS recommendation.
+        Point your camera at any item and instantly get an ID, real market value, and a clear BUY or PASS recommendation. Works at thrift stores, garage sales, and anywhere you find stuff worth flipping.
       </p>
       <div className="reveal" style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
         <a href="/scan" style={{ padding: "16px 40px", borderRadius: 10, fontFamily: F.display, fontSize: 18, fontWeight: 600, textDecoration: "none", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", letterSpacing: 0.5, transition: "transform 0.2s, box-shadow 0.2s" }}>
