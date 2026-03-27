@@ -672,6 +672,7 @@ function PaywallModal({ onClose, onPurchase, remaining }) {
           Get {selectedPlan?.scans} Deep Scans
         </button>
         <div style={{ fontSize: 11, color: C.textMuted, textAlign: "center", marginTop: 10 }}>Quick scans are always free</div>
+        <div style={{ fontSize: 11, color: C.textMuted, textAlign: "center", marginTop: 6, lineHeight: 1.5 }}>⚠️ Credits are saved to this device only. Purchase on the device you plan to use most.</div>
       </div>
     </div>
   );
