@@ -718,7 +718,7 @@ function CreditBadge({ remaining, onClick, style }) {
 }
 
 // ─── DETAIL VIEW ───────────────────────────────────────────
-function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScansRemaining, onShowPaywall }) {
+function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScansRemaining, onShowPaywall, deepResultRef }) {
   const a = item.analysis;
   const v = item.valuation;
   const hasDeep = !!v;
@@ -981,6 +981,7 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
       )}
 
       {/* ═══ DEEP SCAN DATA ═══ */}
+      <div ref={deepResultRef} style={{ scrollMarginTop: 20 }} />
       {hasDeep && (
         <>
           <RecentSales sales={v?.recent_sales} loading={false} isUnique={!!a?.is_unique} searchQuery={a?.search_query || a?.item_name} category={a?.category} />
@@ -1111,6 +1112,77 @@ function AdminHeader({ onUnlock }) {
   );
 }
 
+// ─── DEEP SCAN RESULT POPUP ──────────────────────────────
+function DeepScanResultModal({ popup, onClose, onSeeBreakdown }) {
+  if (!popup) return null;
+  const { decision, lowVal, highVal, profit, itemName, askingPrice } = popup;
+  const ds = decision ? decisionStyles[decision] : null;
+  const avg = lowVal != null && highVal != null ? Math.round((lowVal + highVal) / 2) : null;
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 150, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 0 24px", pointerEvents: "none" }}>
+      <div style={{
+        pointerEvents: "all",
+        width: "100%", maxWidth: 480, margin: "0 16px",
+        background: C.bgCard,
+        borderRadius: 20,
+        border: `2px solid ${ds ? ds.border : C.border}`,
+        boxShadow: `0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px ${ds ? ds.border : C.border}`,
+        overflow: "hidden",
+        animation: "slideUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)",
+      }}>
+        <style>{`@keyframes slideUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+
+        {/* Verdict banner */}
+        <div style={{ padding: "20px 24px 16px", background: ds ? ds.bg : C.bgSurface, textAlign: "center", borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 36, marginBottom: 4 }}>{ds ? ds.icon : "🔬"}</div>
+          <div style={{ fontFamily: F.display, fontSize: 32, fontWeight: 700, color: ds ? ds.color : C.accent, letterSpacing: 2, marginBottom: 4 }}>
+            {ds ? ds.label : "COMPLETE"}
+          </div>
+          <div style={{ fontSize: 12, color: C.textDim, lineHeight: 1.4 }}>
+            {ds ? ds.sub : "Deep Scan finished — see full breakdown below"}
+          </div>
+        </div>
+
+        {/* Stats row */}
+        {(avg != null || profit != null) && (
+          <div style={{ display: "flex", borderBottom: `1px solid ${C.border}` }}>
+            {avg != null && (
+              <div style={{ flex: 1, padding: "14px 16px", textAlign: "center", borderRight: profit != null ? `1px solid ${C.border}` : "none" }}>
+                <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 4 }}>Est. Value</div>
+                <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 700, color: C.accent }}>${avg}</div>
+                <div style={{ fontSize: 10, color: C.textMuted }}>${lowVal} – ${highVal}</div>
+              </div>
+            )}
+            {profit != null && askingPrice != null && (
+              <div style={{ flex: 1, padding: "14px 16px", textAlign: "center" }}>
+                <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 4 }}>Flip Potential</div>
+                <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 700, color: profit >= 0 ? C.buy : C.pass }}>{profit >= 0 ? "+" : ""}${profit}</div>
+                <div style={{ fontSize: 10, color: C.textMuted }}>vs ${askingPrice} asking</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Item name */}
+        <div style={{ padding: "10px 20px", borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 12, color: C.textMuted, fontFamily: F.mono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{itemName}</div>
+        </div>
+
+        {/* Buttons */}
+        <div style={{ display: "flex", gap: 10, padding: "14px 16px" }}>
+          <button onClick={onSeeBreakdown} style={{ flex: 1, padding: "12px 20px", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", borderRadius: 10, cursor: "pointer", fontFamily: F.display, fontSize: 15, fontWeight: 700, letterSpacing: 0.5 }}>
+            See Full Breakdown
+          </button>
+          <button onClick={onClose} style={{ padding: "12px 16px", background: "transparent", color: C.textMuted, border: `1px solid ${C.border}`, borderRadius: 10, cursor: "pointer", fontFamily: F.body, fontSize: 13 }}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── MAIN APP ──────────────────────────────────────────────
 export default function RelicID() {
   const [tab, setTab] = useState("scan");
@@ -1134,7 +1206,9 @@ export default function RelicID() {
   const [deepLoading, setDeepLoading] = useState(false);
   const [scanResult, setScanResult] = useState(null);
   const [error, setError] = useState(null);
+  const [deepScanPopup, setDeepScanPopup] = useState(null);
   const scanLock = useRef(false);
+  const deepResultRef = useRef(null);
 
   useEffect(() => {
     loadCollection().then(items => { setCollection(items); setLoaded(true); });
@@ -1288,6 +1362,23 @@ export default function RelicID() {
       setCollection(newColl);
       await saveCollection(newColl);
       if (item._cacheKey) await setCachedResult(item._cacheKey, updated);
+
+      // ─── TRIGGER DEEP SCAN POPUP ───
+      const deepLow = parseDollar(valuation.low_estimate);
+      const deepHigh = parseDollar(valuation.high_estimate);
+      const askingPriceVal = item.askingPrice;
+      const decision = askingPriceVal != null && deepLow != null && deepHigh != null
+        ? getDecision(askingPriceVal, deepLow, deepHigh) : null;
+      const profit = askingPriceVal != null && deepLow != null && deepHigh != null
+        ? getFlipProfit(askingPriceVal, deepLow, deepHigh) : null;
+      setDeepScanPopup({
+        decision,
+        lowVal: deepLow,
+        highVal: deepHigh,
+        profit,
+        itemName: item.analysis?.item_name || "Item",
+        askingPrice: askingPriceVal,
+      });
     } catch (e) {
       console.error("Deep analysis error:", e);
     } finally {
@@ -1397,7 +1488,7 @@ export default function RelicID() {
               </div>
               <button onClick={resetScan} style={{ padding: "8px 20px", background: C.bgCard, color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 6, cursor: "pointer", fontFamily: F.body, fontSize: 13, fontWeight: 600 }}>📷 Scan Another</button>
             </div>
-            <DetailView item={scanResult} onBack={resetScan} onDelete={() => { deleteItem(scanResult.id); resetScan(); }} onLoadDeep={(extras) => loadDeepData(scanResult, extras)} deepLoading={deepLoading} deepScansRemaining={deepScansRemaining} onShowPaywall={() => setShowPaywall(true)} />
+            <DetailView item={scanResult} onBack={resetScan} onDelete={() => { deleteItem(scanResult.id); resetScan(); }} onLoadDeep={(extras) => loadDeepData(scanResult, extras)} deepLoading={deepLoading} deepScansRemaining={deepScansRemaining} onShowPaywall={() => setShowPaywall(true)} deepResultRef={deepResultRef} />
           </div>
         )}
 
@@ -1497,7 +1588,7 @@ export default function RelicID() {
 
         {tab === "collection" && detailItem && (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
-            <DetailView item={detailItem} onBack={() => setDetailItem(null)} onDelete={() => deleteItem(detailItem.id)} onLoadDeep={(extras) => loadDeepData(detailItem, extras)} deepLoading={deepLoading} deepScansRemaining={deepScansRemaining} onShowPaywall={() => setShowPaywall(true)} />
+            <DetailView item={detailItem} onBack={() => setDetailItem(null)} onDelete={() => deleteItem(detailItem.id)} onLoadDeep={(extras) => loadDeepData(detailItem, extras)} deepLoading={deepLoading} deepScansRemaining={deepScansRemaining} onShowPaywall={() => setShowPaywall(true)} deepResultRef={deepResultRef} />
           </div>
         )}
 
@@ -1507,6 +1598,22 @@ export default function RelicID() {
           <p style={{ fontSize: 11, color: C.textMuted, margin: 0 }}>RelicID · AI-powered identification & valuation · Not financial advice · getrelicid.com</p>
         </footer>
       </div>
+
+      {/* ═══ DEEP SCAN RESULT POPUP ═══ */}
+      <DeepScanResultModal
+        popup={deepScanPopup}
+        onClose={() => setDeepScanPopup(null)}
+        onSeeBreakdown={() => {
+          setDeepScanPopup(null);
+          setTimeout(() => {
+            if (deepResultRef.current) {
+              deepResultRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+            } else {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          }, 100);
+        }}
+      />
 
       {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} onPurchase={handlePurchase} remaining={deepScansRemaining} />}
 
