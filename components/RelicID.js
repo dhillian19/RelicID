@@ -48,6 +48,8 @@ CRITICAL RULES:
 - Only name a specific pattern, motif, or symbol if you are 100% certain. If there is ANY doubt, describe what you physically see instead.
 - NEVER speculate about religious motifs or culturally sensitive imagery.
 - Be honest about what you CAN'T determine. "Cannot confirm from photos" is better than a wrong guess.
+- CONDITION: Only describe damage or flaws you can clearly see in the photo. If the item looks clean and undamaged, say so. Do NOT invent or assume flaws (scratches, fading, wear) to sound thorough — fabricating condition issues causes wrong valuations.
+- VARIANTS: When two or more versions are visually indistinguishable (e.g. Base Set vs Base Set 2, Switch vs Switch OLED, 1st Edition vs Unlimited), do NOT guess. Name both possibilities in item_name (e.g. "Venusaur Base Set 15/102 OR Base Set 2 18/130") and explain in description exactly what physical detail the user should check to tell them apart.
 ${photoCount > 1 ? "- Consider ALL photos together." : ""}
 
 Respond ONLY with this JSON (no markdown, no backticks):
@@ -56,19 +58,19 @@ Respond ONLY with this JSON (no markdown, no backticks):
   "object_type_confidence": "High, Medium, or Low",
   "object_type_note": "Brief explanation if confidence is not High, or if there's ambiguity. null if straightforward.",
   "item_name": "Most specific name possible. For cards: 'Venusaur 15/102 Base Set Unlimited Holo'. For shoes: 'Nike Air Jordan 1 Retro High OG Chicago 2015'. For vintage items: 'Roseville Pottery Pinecone Vase 712-10 Brown'. For printed media: 'Poster depicting [subject]'. For screen captures: name the DEPICTED ITEM, not the screenshot itself (e.g. 'WWF Wrestling Challenge Arcade Cabinet' not 'Screenshot of WWF game'). Always include identifying numbers/editions when visible.",
-  "category": "One of: Furniture, Pottery/Porcelain, Glassware, Coins/Currency, Jewelry/Metals, Toys/Games, Art/Prints, Textiles, Books/Ephemera, Tools/Instruments, Clothing/Accessories, Electronics, Trading Cards, Sneakers/Footwear, Vehicles, Other",
+  "category": "One of: Furniture, Pottery/Porcelain, Glassware, Coins/Currency, Jewelry/Metals, Toys/Games, Art/Prints, Textiles, Books/Ephemera, Tools/Instruments, Clothing/Accessories, Electronics, Trading Cards, Sneakers/Footwear, Gaming/Consoles, Video Games, Vehicles, Other",
   "estimated_era": "Date range or specific year",
   "style_period": "Style, period, set name, or product line",
   "likely_origin": "Country or region",
   "maker": "Brand or maker. Only name specific maker if confirmed by visible marks. Otherwise: 'Unconfirmed — possible: [X, Y, Z].'",
   "materials": ["materials"],
-  "condition_notes": "Observable condition. State if graded/slabbed or raw/ungraded. Note specific flaws. For non-physical items, describe the media condition.",
+  "condition_notes": "Observable condition. State if graded/slabbed or raw/ungraded. Note specific flaws only if clearly visible in the photo. If item appears clean and undamaged, say so.",
   "condition_grade": "One of: Mint, Near Mint, Excellent, Very Good, Good, Fair, Poor — or 'Graded [grade]' if in a grading slab. null if not a physical object.",
   "key_features": ["Specific identifying details you can see — card numbers, set symbols, edition stamps, maker marks, model numbers, serial numbers, signatures, tags, labels"],
   "search_query": "The most effective search query to find this item's market value. For mass-produced items: be specific with brand, model, set, number, edition. For handmade/unique items: search for COMPARABLE pieces by medium + subject + size (e.g. 'large completed cross stitch pixel art video game sold' or 'handmade wrestling fan art framed sold'). For printed media: search for the print/poster specifically.",
   "is_unique": false,
   "confidence_percent": 75,
-  "description": "2-3 sentence summary. Lead with object type if it's NOT a straightforward physical object. Then the specific identification, condition, and notable features.",
+  "description": "2-3 sentence summary. Lead with object type if it's NOT a straightforward physical object. Then the specific identification, condition, and notable features. If multiple variants are possible, explain exactly what to look for to tell them apart.",
   "low_estimate": 20,
   "high_estimate": 100,
   "demand_level": "High, Medium, or Low",
@@ -185,6 +187,26 @@ const CATEGORY_TRIGGERS = {
     missingNote: "Resale value varies by size, condition, and whether tags are still attached.",
     deepInstructions: (e) => { let l = []; if (e.size) l.push(`Size: ${e.size}`); if (e.with_tags && e.with_tags !== "Not sure") l.push(`Tags: ${e.with_tags}`); return l.length ? l.join("\n") : "No additional details provided."; },
   },
+  "Gaming/Consoles": {
+    icon: "🎮", title: "Improve Console Valuation", description: "Console name and condition dramatically affect resale value.",
+    fields: [
+      { key: "console_name", label: "Console Name", type: "text", placeholder: "e.g. Nintendo Switch OLED, PS5 Disc Edition" },
+      { key: "storage", label: "Storage / Edition", type: "text", placeholder: "e.g. 256GB, Digital Edition" },
+      { key: "working", label: "Working Condition", type: "select", options: ["Fully working", "Partially working", "Not working", "Not sure"] },
+    ],
+    missingNote: "Console value varies significantly by exact model, storage, and working condition.",
+    deepInstructions: (e) => { let l = []; if (e.console_name) l.push(`Console: ${e.console_name}`); if (e.storage) l.push(`Storage/Edition: ${e.storage}`); if (e.working && e.working !== "Not sure") l.push(`Condition: ${e.working}`); return l.length ? l.join("\n") : "No additional details provided."; },
+  },
+  "Video Games": {
+    icon: "🕹️", title: "Improve Game Valuation", description: "Title, platform, and completeness make a big difference.",
+    fields: [
+      { key: "game_title", label: "Game Title", type: "text", placeholder: "e.g. Zelda: Breath of the Wild" },
+      { key: "platform", label: "Platform", type: "text", placeholder: "e.g. Nintendo Switch, PS5, Xbox Series X" },
+      { key: "complete", label: "Completeness", type: "select", options: ["Complete in Box (CIB)", "Cart / Disc Only", "Box Only", "Not sure"] },
+    ],
+    missingNote: "Game value depends heavily on title, platform, and whether it includes box and manual.",
+    deepInstructions: (e) => { let l = []; if (e.game_title) l.push(`Game: ${e.game_title}`); if (e.platform) l.push(`Platform: ${e.platform}`); if (e.complete && e.complete !== "Not sure") l.push(`Completeness: ${e.complete}`); return l.length ? l.join("\n") : "No additional details provided."; },
+  },
 };
 
 // ─── DESIGN SYSTEM ─────────────────────────────────────────
@@ -228,7 +250,28 @@ function buildSearchUrl(platform, query) {
     case "amazon": return `https://www.amazon.com/s?k=${q}`;
     case "stockx": return `https://stockx.com/search?s=${q}`;
     case "goat": return `https://www.goat.com/search?query=${q}`;
+    case "pricecharting": return `https://www.pricecharting.com/search-products?q=${q}`;
+    case "depop": return `https://www.depop.com/search/?q=${q}`;
+    case "swappa": return `https://swappa.com/buy/${q}`;
+    case "tcgplayer_sold": return `https://www.tcgplayer.com/search/all/product?q=${q}&view=grid&inStock=false&Language=English`;
     default: return `https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Complete=1&LH_Sold=1&_sop=13`;
+  }
+}
+
+// ─── CATEGORY-AWARE PLATFORM LINKS ───────────────────────
+function getCategoryPlatforms(category) {
+  switch (category) {
+    case "Trading Cards": return [{ key: "tcgplayer", label: "TCGPlayer" }, { key: "ebay", label: "eBay Sold" }, { key: "mercari", label: "Mercari" }];
+    case "Sneakers/Footwear": return [{ key: "stockx", label: "StockX" }, { key: "goat", label: "GOAT" }, { key: "ebay", label: "eBay Sold" }];
+    case "Clothing/Accessories": return [{ key: "poshmark", label: "Poshmark" }, { key: "depop", label: "Depop" }, { key: "ebay", label: "eBay Sold" }];
+    case "Electronics": return [{ key: "ebay", label: "eBay Sold" }, { key: "swappa", label: "Swappa" }, { key: "mercari", label: "Mercari" }];
+    case "Gaming/Consoles": return [{ key: "ebay", label: "eBay Sold" }, { key: "pricecharting", label: "PriceCharting" }, { key: "mercari", label: "Mercari" }];
+    case "Video Games": return [{ key: "pricecharting", label: "PriceCharting" }, { key: "ebay", label: "eBay Sold" }, { key: "mercari", label: "Mercari" }];
+    case "Art/Prints": return [{ key: "etsy", label: "Etsy" }, { key: "ebay", label: "eBay Sold" }];
+    case "Jewelry/Metals": return [{ key: "ebay", label: "eBay Sold" }, { key: "etsy", label: "Etsy" }, { key: "poshmark", label: "Poshmark" }];
+    case "Toys/Games": return [{ key: "ebay", label: "eBay Sold" }, { key: "mercari", label: "Mercari" }, { key: "etsy", label: "Etsy" }];
+    case "Books/Ephemera": return [{ key: "ebay", label: "eBay Sold" }, { key: "amazon", label: "Amazon" }, { key: "etsy", label: "Etsy" }];
+    default: return [{ key: "ebay", label: "eBay Sold" }, { key: "mercari", label: "Mercari" }];
   }
 }
 
@@ -425,7 +468,7 @@ function getCollectionStats(items) {
   return { totalValue: Math.round(totalValue), totalProfit: Math.round(totalProfit), bestFind, highestProfit, needsReview, count: items.length };
 }
 
-// ─── UI COMPONENTS (unchanged) ─────────────────────────────
+// ─── UI COMPONENTS ─────────────────────────────────────────
 function TabBar({ active, onChange, counts }) {
   const tabs = [{ id: "scan", label: "Scan", icon: "🔍" }, { id: "collection", label: "Collection", icon: "📦", count: counts }, { id: "guide", label: "Photo Tips", icon: "📸" }];
   return (
@@ -512,7 +555,7 @@ function ConfidenceBar({ percent }) {
   );
 }
 
-function RecentSales({ sales, loading, isUnique, searchQuery }) {
+function RecentSales({ sales, loading, isUnique, searchQuery, category }) {
   const title = isUnique ? "Comparable Sales" : "Recent Sales";
   if (loading) return (
     <div style={{ padding: 16, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 16, textAlign: "center" }}>
@@ -545,12 +588,11 @@ function RecentSales({ sales, loading, isUnique, searchQuery }) {
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
           <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8 }}>Verify Prices</div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <a href={buildSearchUrl("ebay", searchQuery)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, fontFamily: F.mono, padding: "5px 12px", borderRadius: 5, background: C.accentGlow, color: C.accent, border: `1px solid ${C.accentDim}40`, textDecoration: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-              eBay Sold →
-            </a>
-            <a href={buildSearchUrl("mercari", searchQuery)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, fontFamily: F.mono, padding: "5px 12px", borderRadius: 5, background: C.accentGlow, color: C.accent, border: `1px solid ${C.accentDim}40`, textDecoration: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-              Mercari →
-            </a>
+            {getCategoryPlatforms(category).map(p => (
+              <a key={p.key} href={buildSearchUrl(p.key, searchQuery)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, fontFamily: F.mono, padding: "5px 12px", borderRadius: 5, background: C.accentGlow, color: C.accent, border: `1px solid ${C.accentDim}40`, textDecoration: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                {p.label} →
+              </a>
+            ))}
           </div>
         </div>
       )}
@@ -740,7 +782,6 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
       {hasDeep ? (
         <DecisionBadge decision={decision} askingPrice={item.askingPrice} lowVal={deepLow} highVal={deepHigh} />
       ) : (
-        /* Quick Scan: prompt to run deep scan for decisions */
         <div style={{ padding: "16px 20px", background: C.bgSurface, borderRadius: 12, border: `1px dashed ${C.border}`, textAlign: "center", marginBottom: 20 }}>
           <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 4 }}>💡 Run a <strong style={{ color: C.accent }}>Deep Scan</strong> to get BUY/PASS verdict and flip profit</div>
           {item.askingPrice != null && <div style={{ fontSize: 11, color: C.textMuted }}>Asking price of ${item.askingPrice} saved — will be evaluated after Deep Scan</div>}
@@ -772,7 +813,6 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
       {/* ═══ VALUE RANGE ═══ */}
       {lowVal != null && highVal != null && (
         <div style={{ background: C.bgCard, borderRadius: 10, border: `1px solid ${hasDeep ? C.success + "40" : C.border}`, padding: 20, marginBottom: 16, position: "relative" }}>
-          {/* Tier label */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <div style={{ fontSize: 9, fontFamily: F.mono, color: hasDeep ? C.success : C.textMuted, textTransform: "uppercase", letterSpacing: 3 }}>
               {hasDeep ? "✓ Market Value (Live Data)" : "⚡ AI Estimate Only"}
@@ -789,7 +829,6 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
             <div style={{ position: "absolute", left: "12%", right: "12%", top: 0, bottom: 0, background: hasDeep ? `linear-gradient(90deg, ${C.accentDim}, ${C.accent}, ${C.accentDim})` : `linear-gradient(90deg, ${C.textMuted}60, ${C.textMuted}, ${C.textMuted}60)`, borderRadius: 3 }} />
           </div>
 
-          {/* Discrepancy notice */}
           {hasDiscrepancy && (
             <div style={{ marginTop: 12, padding: "8px 12px", background: `${C.info}10`, borderRadius: 6, border: `1px solid ${C.info}30`, fontSize: 12, color: C.info }}>
               📊 Updated with real market data — value differs from initial AI estimate
@@ -798,7 +837,7 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
         </div>
       )}
 
-      {/* ═══ DEEP SCAN CTA — with optional category prompt ═══ */}
+      {/* ═══ DEEP SCAN CTA ═══ */}
       {!hasDeep && !deepLoading && !showCatPrompt && !showConfirm && (
         <div style={{ padding: 24, background: `linear-gradient(135deg, ${C.accentGlow}, ${C.bgCard})`, borderRadius: 12, border: `1px solid ${C.accent}40`, marginBottom: 20, textAlign: "center" }}>
           <div style={{ fontSize: 20, marginBottom: 8 }}>🔬</div>
@@ -830,7 +869,7 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
         </div>
       )}
 
-      {/* ═══ CATEGORY PROMPT — shown for trigger categories ═══ */}
+      {/* ═══ CATEGORY PROMPT ═══ */}
       {showCatPrompt && trigger && (
         <div style={{ padding: 20, background: C.bgCard, borderRadius: 12, border: `1px solid ${C.accent}40`, marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -873,10 +912,10 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
         </div>
       )}
 
-      {/* ═══ DEMAND & SPEED — show from whichever source ═══ */}
+      {/* ═══ DEMAND & SPEED ═══ */}
       <DemandBadges demand={v?.demand_level || a?.demand_level} speed={v?.sell_speed || a?.sell_speed} />
 
-      {/* ═══ DESCRIPTION & DETAILS — always shown ═══ */}
+      {/* ═══ DESCRIPTION & DETAILS ═══ */}
       <p style={{ fontSize: 15, lineHeight: 1.7, color: C.text, margin: "0 0 16px" }}>{a?.description}</p>
 
       {/* ═══ UNIQUE / HANDMADE NOTICE ═══ */}
@@ -916,10 +955,10 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
         </div>
       )}
 
-      {/* ═══ DEEP SCAN DATA — only after deep scan ═══ */}
+      {/* ═══ DEEP SCAN DATA ═══ */}
       {hasDeep && (
         <>
-          <RecentSales sales={v?.recent_sales} loading={false} isUnique={!!a?.is_unique} searchQuery={a?.search_query || a?.item_name} />
+          <RecentSales sales={v?.recent_sales} loading={false} isUnique={!!a?.is_unique} searchQuery={a?.search_query || a?.item_name} category={a?.category} />
           {v?.value_factors?.length > 0 && (
             <div style={{ padding: 14, background: C.bgCard, borderRadius: 8, border: `1px solid ${C.border}`, marginBottom: 10 }}>
               <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 2, marginBottom: 6 }}>Value Factors</div>
@@ -1017,7 +1056,7 @@ export default function RelicID() {
   const [deepLoading, setDeepLoading] = useState(false);
   const [scanResult, setScanResult] = useState(null);
   const [error, setError] = useState(null);
-  const scanLock = useRef(false); // debounce lock
+  const scanLock = useRef(false);
 
   useEffect(() => {
     loadCollection().then(items => { setCollection(items); setLoaded(true); });
@@ -1027,7 +1066,6 @@ export default function RelicID() {
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get("session_id");
     if (sessionId && !isSessionProcessed(sessionId)) {
-      // Verify with server that payment was real
       fetch(`/api/verify-session?session_id=${encodeURIComponent(sessionId)}`)
         .then(res => res.json())
         .then(data => {
@@ -1061,7 +1099,6 @@ export default function RelicID() {
       if (data.url) {
         window.location.href = data.url;
       } else if (data.error === "Price not configured") {
-        // Fallback: test mode — add credits directly for development
         const newTotal = addDeepScans(plan.scans);
         setDeepScansRemaining(newTotal);
         setShowPaywall(false);
@@ -1095,21 +1132,16 @@ export default function RelicID() {
     setScanResult(null); setError(null); setAskingPrice("");
   };
 
-  // ─── MAIN SCAN (light processing, 1 API call, always free) ──
   const runScan = async () => {
     if (activePhotos.length === 0 || scanLock.current) return;
 
-    scanLock.current = true; // debounce
+    scanLock.current = true;
     setAnalyzing(true); setError(null); setScanResult(null);
 
     try {
-      // 1. Compress images
-      const compressed = await Promise.all(
-        activePhotos.map(p => compressImage(p.dataUrl))
-      );
+      const compressed = await Promise.all(activePhotos.map(p => compressImage(p.dataUrl)));
       const compressedBase64 = compressed.map(d => d.split(",")[1]);
 
-      // 2. Check cache
       const cacheKey = quickHash(compressedBase64.join(""));
       const cached = await getCachedResult(cacheKey);
       if (cached) {
@@ -1121,7 +1153,6 @@ export default function RelicID() {
         return;
       }
 
-      // 3. Light analysis (1 API call, no web search)
       const result = await callLightAnalysis(compressedBase64);
       if (!result) throw new Error("Could not parse identification");
 
@@ -1148,9 +1179,7 @@ export default function RelicID() {
         analysis, valuation: null, _cacheKey: cacheKey,
       };
 
-      // Cache result
       await setCachedResult(cacheKey, newItem);
-
       setScanResult(newItem);
       const updated = [newItem, ...collection];
       setCollection(updated);
@@ -1164,10 +1193,8 @@ export default function RelicID() {
     }
   };
 
-  // ─── DEEP ANALYSIS (on demand, costs 1 credit) ──────────
   const loadDeepData = async (item, userExtras) => {
     if (deepLoading) return;
-    // Deduct credit
     if (!deductDeepScan()) { setShowPaywall(true); return; }
     setDeepScansRemaining(getDeepScanCredits());
     setDeepLoading(true);
@@ -1177,15 +1204,11 @@ export default function RelicID() {
       const valuation = deep ? { ...fallback, ...deep } : fallback;
 
       const updated = { ...item, valuation };
-      // Update in scan result
       if (scanResult?.id === item.id) setScanResult(updated);
-      // Update in detail view
       if (detailItem?.id === item.id) setDetailItem(updated);
-      // Update in collection
       const newColl = collection.map(c => c.id === item.id ? updated : c);
       setCollection(newColl);
       await saveCollection(newColl);
-      // Update cache
       if (item._cacheKey) await setCachedResult(item._cacheKey, updated);
     } catch (e) {
       console.error("Deep analysis error:", e);
@@ -1308,7 +1331,6 @@ export default function RelicID() {
               const stats = getCollectionStats(collection);
               return (
                 <>
-                  {/* ═══ DOPAMINE HEADER ═══ */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
                     <div style={{ padding: "16px 12px", background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, textAlign: "center" }}>
                       <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 4 }}>Collection Value</div>
@@ -1324,7 +1346,6 @@ export default function RelicID() {
                     </div>
                   </div>
 
-                  {/* ═══ HIGHLIGHT STRIP ═══ */}
                   {(stats.bestFind || stats.highestProfit || stats.needsReview) && (
                     <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 8, marginBottom: 20, WebkitOverflowScrolling: "touch" }}>
                       {stats.bestFind && (() => {
@@ -1368,7 +1389,6 @@ export default function RelicID() {
                     </div>
                   )}
 
-                  {/* ═══ SORT & FILTER ═══ */}
                   <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
                     <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Search items..." style={{ flex: "1 1 200px", padding: "10px 14px", background: C.bgSurface, border: `1px solid ${C.border}`, borderRadius: 6, color: C.text, fontFamily: F.body, fontSize: 13, outline: "none" }} />
                   </div>
@@ -1378,13 +1398,11 @@ export default function RelicID() {
                     </div>
                   )}
 
-                  {/* ═══ ITEM GRID ═══ */}
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
                     {filtered.map(item => <ResultCard key={item.id} item={item} compact onClick={() => setDetailItem(item)} />)}
                   </div>
                   {filtered.length === 0 && <p style={{ textAlign: "center", color: C.textMuted, fontSize: 14, padding: 40 }}>No items match.</p>}
 
-                  {/* ═══ FLOATING SCAN BUTTON ═══ */}
                   <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10 }}>
                     <button onClick={() => setTab("scan")} style={{ width: 56, height: 56, borderRadius: 28, background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", cursor: "pointer", fontSize: 24, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px rgba(201,165,85,0.4)" }}>+</button>
                   </div>
@@ -1407,10 +1425,8 @@ export default function RelicID() {
         </footer>
       </div>
 
-      {/* ═══ PAYWALL MODAL ═══ */}
       {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} onPurchase={handlePurchase} remaining={deepScansRemaining} />}
 
-      {/* ═══ PURCHASE CONFIRMATION TOAST ═══ */}
       {purchaseMsg && (
         <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", zIndex: 110, padding: "12px 24px", background: C.success, color: "#fff", borderRadius: 10, fontFamily: F.body, fontSize: 14, fontWeight: 600, boxShadow: "0 4px 20px rgba(0,0,0,0.3)", animation: "fadeIn 0.3s ease" }}>
           {purchaseMsg}
