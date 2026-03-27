@@ -1,15 +1,13 @@
 import Stripe from "stripe";
 
-export async function GET(request) {
+export async function POST(request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const sessionId = searchParams.get("session_id");
+    const { planId, scans, priceAmount } = await request.json();
 
-    if (!sessionId) {
-      return Response.json({ error: "Missing session_id" }, { status: 400 });
+    if (!planId || !scans || !priceAmount) {
+      return Response.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Determine environment
     const mode = process.env.STRIPE_MODE || "test";
     const secretKey = mode === "live"
       ? process.env.STRIPE_LIVE_SECRET_KEY
@@ -21,34 +19,33 @@ export async function GET(request) {
 
     const stripe = new Stripe(secretKey);
 
-    // Retrieve the session from Stripe
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
-
-    console.log(`[RelicID Verify] Session ${sessionId} | Status: ${session.payment_status} | Plan: ${session.metadata?.plan_id}`);
-
-    if (session.payment_status !== "paid") {
-      return Response.json({ error: "Payment not completed", status: session.payment_status }, { status: 402 });
-    }
-
-    const scans = parseInt(session.metadata?.scans) || 0;
-    const planId = session.metadata?.plan_id || "unknown";
-
-    if (scans <= 0) {
-      return Response.json({ error: "Invalid session metadata" }, { status: 400 });
-    }
-
-    return Response.json({
-      verified: true,
-      scans,
-      planId,
-      sessionId: session.id,
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            unit_amount: priceAmount, // in cents, e.g. 499 for $4.99
+            product_data: {
+              name: `RelicID - ${planId}`,
+              description: `${scans} deep scan credits`,
+            },
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        plan_id: planId,
+        scans: String(scans),
+      },
+      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/scan?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/scan?cancelled=true`,
     });
+
+    return Response.json({ url: session.url });
   } catch (err) {
-    console.error("[RelicID Verify] Error:", err.message);
-    // Handle invalid session IDs gracefully
-    if (err.type === "StripeInvalidRequestError") {
-      return Response.json({ error: "Invalid session" }, { status: 400 });
-    }
+    console.error("[RelicID Checkout] Error:", err.message);
     return Response.json({ error: err.message }, { status: 500 });
   }
 }
