@@ -355,11 +355,35 @@ function parseJson(text) {
 }
 
 // ─── DEEP SCAN CREDITS ────────────────────────────────────
+const DAILY_FREE_SCAN_KEY = "relicid-last-daily-scan";
+
+function checkAndGrantDailyScan() {
+  try {
+    const isNewUser = localStorage.getItem("relicid-deep-credits") == null;
+    if (isNewUser) return; // new users get FREE_DEEP_SCANS on first load, not daily yet
+    const today = new Date().toDateString();
+    const lastGranted = localStorage.getItem(DAILY_FREE_SCAN_KEY);
+    if (lastGranted !== today) {
+      // Grant 1 free scan for the day
+      const current = parseInt(localStorage.getItem("relicid-deep-credits")) || 0;
+      localStorage.setItem("relicid-deep-credits", String(current + 1));
+      localStorage.setItem(DAILY_FREE_SCAN_KEY, today);
+    }
+  } catch {}
+}
+
 function getDeepScanCredits() {
   try {
     const raw = localStorage.getItem("relicid-deep-credits");
-    if (raw == null) { localStorage.setItem("relicid-deep-credits", String(FREE_DEEP_SCANS)); return FREE_DEEP_SCANS; }
-    return parseInt(raw) || 0;
+    if (raw == null) {
+      // Brand new user — give initial 3 free scans and mark today as granted
+      localStorage.setItem("relicid-deep-credits", String(FREE_DEEP_SCANS));
+      localStorage.setItem(DAILY_FREE_SCAN_KEY, new Date().toDateString());
+      return FREE_DEEP_SCANS;
+    }
+    // Returning user — check if they get their daily free scan
+    checkAndGrantDailyScan();
+    return parseInt(localStorage.getItem("relicid-deep-credits")) || 0;
   } catch { return 0; }
 }
 function setDeepScanCredits(n) {
