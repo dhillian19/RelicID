@@ -1,11 +1,22 @@
 import Stripe from "stripe";
 
+const PLANS = {
+  ds15: { scans: 15, priceAmount: 299 },
+  ds30: { scans: 30, priceAmount: 499 },
+  ds60: { scans: 60, priceAmount: 999 },
+};
+
 export async function POST(request) {
   try {
-    const { planId, scans, priceAmount } = await request.json();
+    const { planId } = await request.json();
 
-    if (!planId || !scans || !priceAmount) {
+    if (!planId) {
       return Response.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    const plan = PLANS[planId];
+    if (!plan) {
+      return Response.json({ error: "Invalid plan" }, { status: 400 });
     }
 
     const mode = process.env.STRIPE_MODE || "test";
@@ -26,10 +37,10 @@ export async function POST(request) {
         {
           price_data: {
             currency: "usd",
-            unit_amount: priceAmount, // in cents, e.g. 499 for $4.99
+            unit_amount: plan.priceAmount,
             product_data: {
-              name: `RelicID - ${planId}`,
-              description: `${scans} deep scan credits`,
+              name: `RelicID — ${plan.scans} Deep Scans`,
+              description: `${plan.scans} deep scan credits for RelicID`,
             },
           },
           quantity: 1,
@@ -37,7 +48,7 @@ export async function POST(request) {
       ],
       metadata: {
         plan_id: planId,
-        scans: String(scans),
+        scans: String(plan.scans),
       },
       success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/scan?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/scan?cancelled=true`,
