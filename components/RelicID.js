@@ -210,9 +210,9 @@ const CACHE_VERSION = "v2"; // bump to invalidate old cache
 
 // ─── DEEP SCAN PRICING ───────────────────────────────────
 const DEEP_SCAN_PLANS = [
-  { id: "ds15", scans: 15, price: "$2.99", desc: "Great for quick thrift runs", stripeLink: null },
-  { id: "ds30", scans: 30, price: "$4.99", desc: "Best value for regular use", popular: true, stripeLink: null },
-  { id: "ds60", scans: 60, price: "$9.99", desc: "For serious flippers", stripeLink: null },
+  { id: "ds15", scans: 15, price: "$2.99", desc: "Great for quick thrift runs" },
+  { id: "ds30", scans: 30, price: "$4.99", desc: "Best value for regular use", popular: true },
+  { id: "ds60", scans: 60, price: "$9.99", desc: "For serious flippers" },
 ];
 const FREE_DEEP_SCANS = 3; // starter credits for new users
 
@@ -332,6 +332,23 @@ function addDeepScans(count) {
   const current = getDeepScanCredits();
   setDeepScanCredits(current + count);
   return current + count;
+}
+
+// ─── SESSION IDEMPOTENCY ──────────────────────────────────
+function isSessionProcessed(sessionId) {
+  try {
+    const processed = JSON.parse(localStorage.getItem("relicid-processed-sessions") || "[]");
+    return processed.includes(sessionId);
+  } catch { return false; }
+}
+function markSessionProcessed(sessionId) {
+  try {
+    const processed = JSON.parse(localStorage.getItem("relicid-processed-sessions") || "[]");
+    processed.push(sessionId);
+    // Keep only last 50 to avoid bloat
+    if (processed.length > 50) processed.splice(0, processed.length - 50);
+    localStorage.setItem("relicid-processed-sessions", JSON.stringify(processed));
+  } catch {}
 }
 
 // ─── RESULT CACHE ──────────────────────────────────────────
@@ -1005,33 +1022,59 @@ export default function RelicID() {
   useEffect(() => {
     loadCollection().then(items => { setCollection(items); setLoaded(true); });
     setDeepScansRemaining(getDeepScanCredits());
-    // Handle post-purchase URL params
+
+    // Handle post-purchase redirect from Stripe
     const params = new URLSearchParams(window.location.search);
-    const addCredits = parseInt(params.get("add_scans"));
-    if (addCredits > 0) {
-      const newTotal = addDeepScans(addCredits);
-      setDeepScansRemaining(newTotal);
-      setPurchaseMsg(`+${addCredits} Deep Scans added`);
-      window.history.replaceState({}, "", window.location.pathname);
-      setTimeout(() => setPurchaseMsg(null), 4000);
+    const sessionId = params.get("session_id");
+    if (sessionId && !isSessionProcessed(sessionId)) {
+      // Verify with server that payment was real
+      fetch(`/api/verify-session?session_id=${encodeURIComponent(sessionId)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.verified && data.scans > 0) {
+            markSessionProcessed(sessionId);
+            const newTotal = addDeepScans(data.scans);
+            setDeepScansRemaining(newTotal);
+            setPurchaseMsg(`+${data.scans} Deep Scans added`);
+            setTimeout(() => setPurchaseMsg(null), 4000);
+          }
+        })
+        .catch(err => console.error("[RelicID] Session verify failed:", err))
+        .finally(() => {
+          window.history.replaceState({}, "", window.location.pathname);
+        });
     }
   }, []);
 
   const hasAnyPhoto = photos.some(p => p.dataUrl);
   const activePhotos = photos.filter(p => p.base64);
 
-  const handlePurchase = (plan) => {
-    // TODO: Replace with Stripe Payment Links
-    // For now, simulate purchase for testing
-    if (plan.stripeLink) {
-      window.location.href = plan.stripeLink;
-    } else {
-      // Test mode: add credits directly
-      const newTotal = addDeepScans(plan.scans);
-      setDeepScansRemaining(newTotal);
-      setShowPaywall(false);
-      setPurchaseMsg(`+${plan.scans} Deep Scans added`);
-      setTimeout(() => setPurchaseMsg(null), 4000);
+  const handlePurchase = async (plan) => {
+    try {
+      setPurchaseMsg("Redirecting to checkout...");
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId: plan.id }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else if (data.error === "Price not configured") {
+        // Fallback: test mode — add credits directly for development
+        const newTotal = addDeepScans(plan.scans);
+        setDeepScansRemaining(newTotal);
+        setShowPaywall(false);
+        setPurchaseMsg(`+${plan.scans} Deep Scans added (test mode)`);
+        setTimeout(() => setPurchaseMsg(null), 4000);
+      } else {
+        setPurchaseMsg(null);
+        setError(data.error || "Checkout failed");
+      }
+    } catch (err) {
+      console.error("[RelicID] Checkout error:", err);
+      setPurchaseMsg(null);
+      setError("Could not connect to payment system");
     }
   };
 
