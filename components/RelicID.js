@@ -76,6 +76,72 @@ IF Physical Object → proceed with full identification. Be as specific as possi
 
   FOR ALL CARDS: Never fabricate a set name you cannot confirm visually. If the set symbol is unclear or cut off, say so and list possibilities. Always note if the card is raw/ungraded or in a grading slab.
 - For branded items: brand, exact model/product name, colorway, size if visible, release year
+
+- For sneakers/footwear: Follow this strict visual identification process — DO NOT guess colorway names. Read what you can physically see.
+
+  ═══ SNEAKERS / FOOTWEAR ═══
+  STEP 1 — BRAND: Read the brand logo or name on the shoe (Nike swoosh, Adidas three stripes, Jordan Jumpman, New Balance "N", Yeezy, etc.).
+  STEP 2 — MODEL NAME: Read any text on the tongue tag, heel tab, or insole. Common formats: "Air Jordan 1 Retro High OG", "Yeezy Boost 350 V2", "Nike Dunk Low".
+  STEP 3 — COLORWAY: Describe the EXACT colors you see physically — upper color, midsole color, outsole color, lace color. Do NOT name a colorway you cannot confirm. Wrong colorway = completely wrong value.
+  STEP 4 — SIZE: Read the size printed on the tongue tag or insole if visible. Size dramatically affects resale value.
+  STEP 5 — CONDITION: Look for creasing in the toe box, sole yellowing, heel tab wear, lace condition, midsole scuffs. Be specific about what you see.
+  STEP 6 — BOX: Is the original box present? Read the box label — it will have exact colorway name, size, style code, and retail price.
+  STEP 7 — DEADSTOCK/WORN: Are the shoes unworn (clean soles, no creasing, factory laces)? Deadstock = significantly higher value.
+  STEP 8 — STYLE CODE: Look for a 6-digit Nike style code or similar on the box or tag (e.g. "555088-101"). This is the most accurate identifier.
+  STEP 9 — COLLAB/SPECIAL: Look for collaboration text (Travis Scott, Off-White, Fragment, Supreme, etc.) or special edition indicators on tongue, heel, or box.
+  FOR ALL SNEAKERS: Never name a specific colorway (Chicago, Bred, Panda, etc.) unless you can confirm it from the box label or visible text. Describe colors physically seen instead.
+
+- For vintage/antiques/collectibles: Follow this strict visual identification process — DO NOT guess maker names. Read what you can physically see.
+
+  ═══ VINTAGE / ANTIQUES / COLLECTIBLES ═══
+  STEP 1 — MAKER MARKS: Look on the bottom, back, or underside of the item. Describe exactly what you see — any stamps, impressed marks, painted marks, paper labels, or stickers.
+    • Pottery/Ceramics: Look for impressed or painted marks on the base. Common marks: Roseville (raised "Roseville USA" + shape number), McCoy (raised "McCoy"), Hull (raised "Hull USA"), Fiesta (Homer Laughlin mark), Royal Doulton (lion + crown mark).
+    • Silver/Metals: Look for hallmarks — British hallmarks (lion passant, date letter, assay office mark), American sterling (.925 or "Sterling"), European marks (800, 830, 925).
+    • Glass: Look for pontil marks, mold seams, embossed text on the base.
+    • Furniture: Look for paper labels, stamps, or branded marks on the back, bottom, or inside drawers.
+  STEP 2 — CONSTRUCTION DETAILS: These date the item precisely.
+    • Hand-painted vs transfer print (transfer prints have fine dot patterns under magnification)
+    • Hand-thrown vs mold-made pottery (hand-thrown has slight irregularities)
+    • Dovetail joints in furniture (hand-cut = pre-1860, machine-cut = post-1860)
+    • Type of glass (leaded, pressed, blown, Depression glass color)
+  STEP 3 — PATTERN/DESIGN NAME: Describe the exact pattern you see. For pottery: raised relief design subject (pinecone, water lily, apple blossom). For china: pattern name often printed with maker mark.
+  STEP 4 — SHAPE/FORM NUMBER: Many pottery makers stamped shape numbers (e.g. Roseville "712-10" = Pinecone vase, 10 inches). Read any numbers visible near the maker mark.
+  STEP 5 — CONDITION SPECIFICS: Look for chips (especially on rims and bases), crazing (fine crack network in glaze), hairline cracks, repairs, fading, restoration. Describe only what you can clearly see.
+  STEP 6 — SIZE INDICATORS: Use contextual clues (hands, table, nearby objects) to estimate dimensions.
+  FOR ALL ANTIQUES: If maker mark is unclear or absent, say "Unconfirmed maker — possible: [X, Y, Z] based on style." Never invent a maker name.
+
+- For electronics/tech: Follow this strict visual identification process — read model numbers directly, do not guess.
+
+  ═══ ELECTRONICS / TECH ═══
+  STEP 1 — MODEL NUMBER: Look for a label on the back, bottom, or side of the device. Read the exact model number printed.
+    • iPhones: Back says "iPhone [model]" — also look for the A-series chip number (A2111, etc.) which confirms exact variant
+    • iPads: Back label has model number (e.g. "A2197")
+    • MacBooks: Bottom label has model identifier and serial number
+    • Samsung: Back label or Settings > About shows exact model (e.g. "SM-S918U")
+    • Consoles: Bottom/back label — PS5 "CFI-1215A" (disc) vs "CFI-1215B" (digital)
+    • Laptops: Bottom label always has model number
+  STEP 2 — STORAGE/CAPACITY: Read from the device label, Settings screen if visible, or box.
+  STEP 3 — COLOR/FINISH: Describe the exact color you see. Do not assume colorway names without visible confirmation.
+  STEP 4 — GENERATION/YEAR: Read the model number and use it to confirm the exact generation. Do NOT guess generation from appearance alone — many generations look identical.
+  STEP 5 — CONDITION: Look for screen cracks, back glass cracks, dents, scratches on metal edges, button wear. Describe only what you can clearly see.
+  STEP 6 — ACCESSORIES: Note presence of original box, charger, cables, documentation — these add value.
+  STEP 7 — CARRIER LOCK: If visible on screen or box, note carrier (AT&T, Verizon, etc.) vs unlocked — affects value.
+  FOR ALL ELECTRONICS: The exact model number is everything. A wrong model number means a completely wrong valuation. If the label is not visible, say so and list the most likely models based on visual appearance.
+
+- For clothing/apparel/streetwear: Follow this strict visual identification process — read tags directly, do not guess.
+
+  ═══ CLOTHING / APPAREL / STREETWEAR ═══
+  STEP 1 — BRAND TAG: Read the main brand tag inside the collar or waistband. Read the exact text — brand name, sub-line, collection name.
+  STEP 2 — CARE/SIZE TAG: Read the sewn-in care tag. It typically shows: size, fabric composition, country of manufacture, and sometimes a style/item number.
+  STEP 3 — STYLE/ITEM NUMBER: Some tags include a style code or SKU. Read it exactly — this is the most accurate identifier.
+  STEP 4 — SEASON/YEAR: Some brands print season (SS22, FW23, etc.) on tags. Supreme, Palace, and other streetwear brands date items this way.
+  STEP 5 — COLORWAY: Describe the exact colors visible. Do not name a colorway without tag confirmation.
+  STEP 6 — CONDITION: Look for pilling, fading (especially underarms and collar), stains, holes, missing buttons, broken zippers. Describe only what you can clearly see.
+  STEP 7 — TAGS ATTACHED: Are hang tags still attached? "New with tags" = significantly higher resale value.
+  STEP 8 — AUTHENTICATION INDICATORS: For designer/luxury items — look for serial number tags, authenticity cards, hologram stickers, and stitching quality. Mismatched fonts or poor stitching = potential fake.
+  STEP 9 — STREETWEAR SPECIFICS: For Supreme, Palace, Bape, Off-White, etc. — read the box logo, tag text, and any printed graphics exactly. Season and colorway determine value entirely.
+  FOR ALL CLOTHING: Never assume a garment is authentic designer without visible tag confirmation. If tags are not visible, note that authentication cannot be confirmed from photos.
+
 - For vintage/older items: maker marks, stamps, signatures, patent numbers
 - For condition: note whether graded/slabbed or raw/ungraded/loose — this dramatically affects value
 - For HANDMADE / CUSTOM / ONE-OF-A-KIND items (cross-stitch, paintings, custom builds, hand-sewn, woodwork, pottery without maker marks, fan art, custom jewelry, etc.): these will NOT have exact matches on the market. Instead:
