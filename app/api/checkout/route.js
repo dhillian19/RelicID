@@ -29,6 +29,7 @@ export async function POST(request) {
     }
 
     const stripe = new Stripe(secretKey);
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://getrelicid.com";
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -50,8 +51,8 @@ export async function POST(request) {
         plan_id: planId,
         scans: String(plan.scans),
       },
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/scan?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/scan?cancelled=true`,
+      success_url: `${baseUrl}/scan?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/scan?cancelled=true`,
     });
 
     return Response.json({ url: session.url });
