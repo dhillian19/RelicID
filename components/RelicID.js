@@ -25,7 +25,56 @@ If you are NOT confident about the object type, say so. "Appears to be" and "may
 Your behavior depends on the object type:
 
 IF Physical Object → proceed with full identification. Be as specific as possible:
-- For trading cards: EXACT card name, set, card number, edition, language, holo status
+- For trading cards: Follow this strict visual identification process — DO NOT guess set names. Read what you can physically see on the card.
+
+  ═══ POKEMON CARDS ═══
+  STEP 1 — SET SYMBOL: Look bottom-right of the artwork box. Describe the exact shape you see.
+    • No symbol = Base Set (1999), Jungle, or Fossil — distinguish by card back color and border style
+    • Pokeball = Base Set 2
+    • Leaf = Jungle
+    • Skull = Fossil
+    • Wave = Team Rocket
+    • Sun = Neo Genesis | Snowflake = Neo Discovery | Net = Neo Revelation | Crystal = Neo Destiny
+    • Circle/star/diamond near card number = modern era (2003+) — read the printed set name
+    • Sword/Shield symbol = Sword & Shield era (2020-2022)
+    • Star burst = Scarlet & Violet era (2023+)
+  STEP 2 — EDITION STAMP: Look bottom-left of artwork box. "Edition 1" stamp in a black circle = 1st Edition (extremely valuable). No stamp = Unlimited.
+  STEP 3 — CARD NUMBER: Read "XX/YYY" printed at bottom. The total (YYY) helps confirm the set.
+    • /102 = Base Set | /64 = Jungle | /62 = Fossil | /130 = Base Set 2
+    • /111 = Neo Genesis | /75 = Neo Discovery | /64 = Neo Revelation | /105 = Neo Destiny
+  STEP 4 — HOLO STATUS: Does the artwork have a rainbow/sparkle texture? Holo = significantly more valuable.
+  STEP 5 — LANGUAGE: Check for non-English text. Japanese cards have different backs and higher value for certain sets.
+  STEP 6 — GRADING SLAB: Is the card in a hard plastic case? Read the label — PSA/BGS/CGC grade number.
+  IF you cannot read the set symbol clearly, list the top 2-3 possibilities based on card number and say what the user should check.
+
+  ═══ MAGIC: THE GATHERING (MTG) CARDS ═══
+  STEP 1 — EXPANSION SYMBOL: Center-right of the card, between artwork and text box. Describe the shape.
+  STEP 2 — RARITY: Color of the expansion symbol. Black = Common, Silver = Uncommon, Gold = Rare, Red/Orange = Mythic Rare.
+  STEP 3 — SET NAME: Often printed at the bottom of the card near the collector number (e.g. "M21", "MH2", "DMU").
+  STEP 4 — COLLECTOR NUMBER: Bottom-left format "XXX/YYY". Use this to confirm set size.
+  STEP 5 — FOIL STATUS: Does the card have a holographic shimmer across the entire card? Foil = more valuable.
+  STEP 6 — FRAME ERA: Pre-2003 cards have a different frame style (no bottom text box separator). Post-2015 have a new font. This helps date unknown cards.
+  STEP 7 — SPECIAL TREATMENTS: Look for alternate art, borderless, showcase, extended art, or retro frame indicators — these are premium variants worth significantly more.
+
+  ═══ SPORTS CARDS (Baseball, Basketball, Football, Hockey) ═══
+  STEP 1 — BRAND & YEAR: Read the brand name printed on the card (Topps, Panini, Upper Deck, Bowman, Fleer, Donruss, Score, etc.) and the year if printed.
+  STEP 2 — SET NAME: Read any series/product name printed (e.g. "Topps Chrome", "Panini Prizm", "Bowman Draft", "Stadium Club").
+  STEP 3 — PLAYER NAME: Read the printed name exactly.
+  STEP 4 — CARD NUMBER: Read the collector number (often bottom corner or back of card).
+  STEP 5 — ROOKIE CARD: Look for "RC", "Rookie", or a rookie logo. Rookie cards are significantly more valuable.
+  STEP 6 — PARALLEL/REFRACTOR: Does the card have a colored border, shimmer, or different finish than a base card? Prizm, Refractor, Chrome, Color parallel variants are worth far more than base. Read any color designation printed on the card.
+  STEP 7 — AUTOGRAPH/PATCH: Is there a real signature on the card? A jersey/relic piece embedded? These are premium inserts.
+  STEP 8 — PRINT RUN: Look for "/XX" numbering (e.g. "/25", "/10", "/1"). Numbered cards are significantly more valuable.
+  STEP 9 — VINTAGE: Pre-1980 cards have distinct visual styles. Look for tobacco card texture, pre-war printing patterns.
+
+  ═══ OTHER TCG (Yu-Gi-Oh, Dragon Ball Super, One Piece, Flesh & Blood, etc.) ═══
+  STEP 1 — GAME IDENTITY: Read the game name printed on the card back or border.
+  STEP 2 — SET CODE: Read the alphanumeric code printed near the card number (e.g. "LOB-001" for Legend of Blue Eyes White Dragon).
+  STEP 3 — RARITY: Read the rarity designation printed on the card (Common, Rare, Super Rare, Ultra Rare, Secret Rare, etc.).
+  STEP 4 — EDITION: First Edition, Unlimited, or Limited Edition markings.
+  STEP 5 — LANGUAGE: Non-English TCG cards (Japanese, Korean, Chinese) often have premium value for certain games.
+
+  FOR ALL CARDS: Never fabricate a set name you cannot confirm visually. If the set symbol is unclear or cut off, say so and list possibilities. Always note if the card is raw/ungraded or in a grading slab.
 - For branded items: brand, exact model/product name, colorway, size if visible, release year
 - For vintage/older items: maker marks, stamps, signatures, patent numbers
 - For condition: note whether graded/slabbed or raw/ungraded/loose — this dramatically affects value
