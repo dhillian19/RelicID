@@ -1058,6 +1058,59 @@ function GuideView() {
   );
 }
 
+
+// ─── ADMIN HEADER ─────────────────────────────────────────
+function AdminHeader({ onUnlock }) {
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [code, setCode] = useState("");
+  const [error, setError] = useState(false);
+  const holdTimer = useRef(null);
+
+  const handlePressStart = () => {
+    holdTimer.current = setTimeout(() => setShowPrompt(true), 3000);
+  };
+  const handlePressEnd = () => {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+  };
+  const handleSubmit = () => {
+    if (code === "4521") {
+      setShowPrompt(false);
+      setCode("");
+      setError(false);
+      onUnlock();
+    } else {
+      setError(true);
+      setCode("");
+    }
+  };
+
+  return (
+    <>
+      <h1
+        onMouseDown={handlePressStart} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd}
+        onTouchStart={handlePressStart} onTouchEnd={handlePressEnd}
+        style={{ fontFamily: F.display, fontSize: "clamp(30px, 6vw, 46px)", fontWeight: 700, margin: 0, lineHeight: 1.1, background: `linear-gradient(135deg, ${C.accent}, #e8d5a0, ${C.accentDim})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", cursor: "default", userSelect: "none" }}
+      >RelicID</h1>
+      {showPrompt && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={() => { setShowPrompt(false); setCode(""); setError(false); }} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.7)" }} />
+          <div style={{ position: "relative", background: C.bg, borderRadius: 12, border: `1px solid ${C.border}`, padding: "28px 24px", width: "100%", maxWidth: 300, textAlign: "center" }}>
+            <div style={{ fontFamily: F.mono, fontSize: 12, color: C.textMuted, marginBottom: 16, letterSpacing: 1 }}>ENTER CODE</div>
+            <input
+              type="password" value={code} onChange={e => { setCode(e.target.value); setError(false); }}
+              onKeyDown={e => e.key === "Enter" && handleSubmit()}
+              autoFocus maxLength={6}
+              style={{ width: "100%", padding: "12px", background: C.bgSurface, border: `1px solid ${error ? C.danger : C.border}`, borderRadius: 6, color: C.text, fontFamily: F.mono, fontSize: 20, textAlign: "center", outline: "none", letterSpacing: 4, marginBottom: 12 }}
+            />
+            {error && <div style={{ fontSize: 11, color: C.danger, marginBottom: 8 }}>Invalid code</div>}
+            <button onClick={handleSubmit} style={{ width: "100%", padding: "10px", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", borderRadius: 6, cursor: "pointer", fontFamily: F.display, fontSize: 15, fontWeight: 600 }}>Submit</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ─── MAIN APP ──────────────────────────────────────────────
 export default function RelicID() {
   const [tab, setTab] = useState("scan");
@@ -1271,7 +1324,12 @@ export default function RelicID() {
 
       <div style={{ position: "relative", zIndex: 1, maxWidth: 780, margin: "0 auto", padding: "28px 20px 60px" }}>
         <header style={{ textAlign: "center", marginBottom: 28 }}>
-          <h1 style={{ fontFamily: F.display, fontSize: "clamp(30px, 6vw, 46px)", fontWeight: 700, margin: 0, lineHeight: 1.1, background: `linear-gradient(135deg, ${C.accent}, #e8d5a0, ${C.accentDim})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>RelicID</h1>
+          <AdminHeader onUnlock={() => {
+            addDeepScans(9999);
+            setDeepScansRemaining(getDeepScanCredits());
+            setPurchaseMsg("🔓 Admin mode activated");
+            setTimeout(() => setPurchaseMsg(null), 3000);
+          }} />
           <p style={{ fontFamily: F.body, fontWeight: 300, fontSize: 14, color: C.textMuted, marginTop: 4, letterSpacing: 0.5 }}>Scan anything. See what it's worth.</p>
         </header>
 
