@@ -845,6 +845,56 @@ async function loadFromCloud(pin) {
   } catch (e) { console.error("[RelicID] Cloud load failed:", e); return null; }
 }
 
+// ─── SCAN CACHE (cross-user accuracy layer) ───────────────
+function buildCacheKey(analysis) {
+  if (!analysis) return null;
+  const category = (analysis.category || "other").toLowerCase().replace(/[^a-z0-9]/g, "-");
+  const name = (analysis.item_name || "")
+    .toLowerCase()
+    // Keep numbers and key words, strip filler
+    .replace(/(the|a|an|and|or|with|for|of|in|on|at|by|from)/g, " ")
+    // Normalize spaces and special chars
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 120);
+  if (!name) return null;
+  return `${category}__${name}`;
+}
+
+async function checkScanCache(cacheKey) {
+  try {
+    if (!cacheKey) return null;
+    const res = await fetch(`/api/scan-cache/get?key=${encodeURIComponent(cacheKey)}`);
+    const data = await res.json();
+    if (data.found && data.valuation) return data;
+    return null;
+  } catch (e) {
+    console.error("[RelicID] Cache check failed:", e);
+    return null;
+  }
+}
+
+async function saveScanCache(cacheKey, analysis, valuation) {
+  try {
+    if (!cacheKey || !valuation) return;
+    await fetch("/api/scan-cache/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cache_key: cacheKey,
+        item_name: analysis.item_name,
+        category: analysis.category,
+        valuation,
+        confidence_percent: analysis.confidence_percent,
+      }),
+    });
+  } catch (e) {
+    console.error("[RelicID] Cache save failed:", e);
+  }
+}
+
 // ─── COLLECTION STATS ─────────────────────────────────────
 function getCollectionStats(items) {
   let totalValue = 0, totalProfit = 0, bestFind = null, highestProfit = null, needsReview = null;
@@ -1095,7 +1145,7 @@ function CreditBadge({ remaining, onClick, style }) {
 }
 
 // ─── DETAIL VIEW ───────────────────────────────────────────
-function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScansRemaining, onShowPaywall, deepResultRef }) {
+function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScansRemaining, onShowPaywall, deepResultRef, cacheHit }) {
   const a = item.analysis;
   const v = item.valuation;
   const hasDeep = !!v;
@@ -1208,6 +1258,7 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
           {hasDeep ? "✓ Deep Scan" : "⚡ Quick Scan"}
         </span>
         <span style={{ fontSize: 11, fontFamily: F.mono, padding: "3px 10px", borderRadius: 4, color: C.textMuted, border: `1px solid ${C.border}` }}>Scanned {new Date(item.scannedAt).toLocaleDateString()}</span>
+        {cacheHit && hasDeep && <span style={{ fontSize: 11, fontFamily: F.mono, padding: "3px 10px", borderRadius: 4, color: C.info, border: `1px solid ${C.info}40`, background: `${C.info}10` }}>⚡ Instant Result</span>}
       </div>
       <h2 style={{ fontFamily: F.display, fontSize: 26, fontWeight: 700, color: C.text, margin: "0 0 4px", lineHeight: 1.2 }}>{a?.item_name}</h2>
       <p style={{ fontSize: 14, color: C.textDim, margin: "0 0 20px" }}>{a?.style_period} · {a?.estimated_era} · {a?.likely_origin}</p>
@@ -1706,6 +1757,7 @@ export default function RelicID() {
   const [scanResult, setScanResult] = useState(null);
   const [error, setError] = useState(null);
   const [deepScanPopup, setDeepScanPopup] = useState(null);
+  const [cacheHit, setCacheHit] = useState(false);
   const [pinModal, setPinModal] = useState(null);
   const [activePin, setActivePin] = useState(null);
   const [pinStatus, setPinStatus] = useState(null);
@@ -1852,6 +1904,39 @@ export default function RelicID() {
 
   const loadDeepData = async (item, userExtras) => {
     if (deepLoading) return;
+
+    // ─── CHECK CLOUD CACHE FIRST ───
+    const cacheKey = buildCacheKey(item.analysis);
+    setCacheHit(false);
+    if (cacheKey && (item.analysis?.confidence_percent || 0) >= 75) {
+      setDeepLoading(true);
+      const cached = await checkScanCache(cacheKey);
+      if (cached) {
+        console.log("[RelicID] Cache HIT for", cacheKey, "— scanned", cached.scan_count, "times");
+        const valuation = cached.valuation;
+        const updated = { ...item, valuation };
+        if (scanResult?.id === item.id) setScanResult(updated);
+        if (detailItem?.id === item.id) setDetailItem(updated);
+        const newColl = collection.map(c => c.id === item.id ? updated : c);
+        setCollection(newColl);
+        await saveCollection(newColl);
+        if (item._cacheKey) await setCachedResult(item._cacheKey, updated);
+        setCacheHit(true);
+        setDeepLoading(false);
+
+        // Show popup for cache hit too
+        const deepLow = parseDollar(valuation.low_estimate);
+        const deepHigh = parseDollar(valuation.high_estimate);
+        const decision = item.askingPrice != null && deepLow != null && deepHigh != null
+          ? getDecision(item.askingPrice, deepLow, deepHigh) : null;
+        const profit = item.askingPrice != null && deepLow != null && deepHigh != null
+          ? getFlipProfit(item.askingPrice, deepLow, deepHigh) : null;
+        setDeepScanPopup({ decision, lowVal: deepLow, highVal: deepHigh, profit, itemName: item.analysis?.item_name || "Item", askingPrice: item.askingPrice });
+        return; // Cache hit — no credit deducted
+      }
+    }
+
+    // No cache hit — charge credit and run fresh scan
     if (!deductDeepScan()) { setShowPaywall(true); return; }
     setDeepScansRemaining(getDeepScanCredits());
     setDeepLoading(true);
@@ -1867,6 +1952,9 @@ export default function RelicID() {
       setCollection(newColl);
       await saveCollection(newColl);
       if (item._cacheKey) await setCachedResult(item._cacheKey, updated);
+
+      // ─── SAVE TO SCAN CACHE (cross-user accuracy layer) ───
+      await saveScanCache(cacheKey, item.analysis, valuation);
 
       // ─── CLOUD SAVE (deep scans only) ───
       const currentPin = getStoredPin();
@@ -1999,7 +2087,7 @@ export default function RelicID() {
               </div>
               <button onClick={resetScan} style={{ padding: "8px 20px", background: C.bgCard, color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 6, cursor: "pointer", fontFamily: F.body, fontSize: 13, fontWeight: 600 }}>📷 Scan Another</button>
             </div>
-            <DetailView item={scanResult} onBack={resetScan} onDelete={() => { deleteItem(scanResult.id); resetScan(); }} onLoadDeep={(extras) => loadDeepData(scanResult, extras)} deepLoading={deepLoading} deepScansRemaining={deepScansRemaining} onShowPaywall={() => setShowPaywall(true)} deepResultRef={deepResultRef} />
+            <DetailView item={scanResult} onBack={resetScan} onDelete={() => { deleteItem(scanResult.id); resetScan(); }} onLoadDeep={(extras) => loadDeepData(scanResult, extras)} deepLoading={deepLoading} deepScansRemaining={deepScansRemaining} onShowPaywall={() => setShowPaywall(true)} deepResultRef={deepResultRef} cacheHit={cacheHit} />
           </div>
         )}
 
@@ -2144,7 +2232,7 @@ export default function RelicID() {
 
         {tab === "collection" && detailItem && (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
-            <DetailView item={detailItem} onBack={() => setDetailItem(null)} onDelete={() => deleteItem(detailItem.id)} onLoadDeep={(extras) => loadDeepData(detailItem, extras)} deepLoading={deepLoading} deepScansRemaining={deepScansRemaining} onShowPaywall={() => setShowPaywall(true)} deepResultRef={deepResultRef} />
+            <DetailView item={detailItem} onBack={() => setDetailItem(null)} onDelete={() => deleteItem(detailItem.id)} onLoadDeep={(extras) => loadDeepData(detailItem, extras)} deepLoading={deepLoading} deepScansRemaining={deepScansRemaining} onShowPaywall={() => setShowPaywall(true)} deepResultRef={deepResultRef} cacheHit={cacheHit} />
           </div>
         )}
 
