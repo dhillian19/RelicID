@@ -110,6 +110,64 @@ IF Physical Object → proceed with full identification. Be as specific as possi
   STEP 6 — SIZE INDICATORS: Use contextual clues (hands, table, nearby objects) to estimate dimensions.
   FOR ALL ANTIQUES: If maker mark is unclear or absent, say "Unconfirmed maker — possible: [X, Y, Z] based on style." Never invent a maker name.
 
+  ═══ MILITARY ANTIQUES (uniforms, headgear, weapons, insignia, medals, equipment) ═══
+  Military antiques are a specialized high-value niche. Provenance, branch, regiment, and era determine value more than condition alone. Follow this protocol:
+
+  STEP 1 — BRANCH IDENTIFICATION: Identify the military branch from visible insignia, colors, and design.
+    • US Army: Eagle insignia, branch-specific colors (Infantry blue, Artillery red, Cavalry yellow)
+    • US Navy/Marine Corps: Anchor motifs, USMC eagle-globe-anchor
+    • Confederate: CS or CSA markings, Southern Cross, state seals
+    • Foreign Military: Look for national emblems, language text, foreign maker marks
+    • Fraternal/Ceremonial: Masonic, Knights Templar, GAR (Grand Army of the Republic) — these are common and often mistaken for true military
+
+  STEP 2 — REGIMENT/UNIT BADGE: The badge or plate is the most critical value factor.
+    • Read any text, numbers, or symbols on the badge exactly
+    • State militia badges (e.g. "1st Regt. Mass. Vol. Militia") vs generic federal issue
+    • Rare regiment badges command 5-10x premium over generic examples
+    • Shell badges (scallop shell shape) are common on 19th century dress hats — identify the specific regiment or branch shown
+
+  STEP 3 — ERA DATING: Military items date precisely by design changes.
+    • Pre-Civil War (pre-1861): Bicorn/chapeau style, early eagle designs
+    • Civil War era (1861-1865): Kepi style dominant, branch color welting
+    • Indian Wars / Gilded Age (1866-1898): Dress helmet with spike, forage cap
+    • Spanish-American War era (1898-1910): Campaign hat introduced
+    • WWI (1917-1918): Doughboy helmet, olive drab
+    • WWII and later: M1 helmet, modern insignia
+
+  STEP 4 — MAKER MARK: Read any interior label, stamp, or tag.
+    • Bent & Bush (Boston, 1841-1933): Major US military hatter, supplied Army/Navy/USMC
+    • Horstmann Bros (Philadelphia): Major Civil War era military goods supplier
+    • Tiffany & Co: Made high-end officer dress items
+    • Foreign makers: Gieve & Sons (British Navy), etc.
+
+  STEP 5 — CONDITION SPECIFICS FOR MILITARY ITEMS:
+    • Plume/feather condition (fragile, often damaged or replaced)
+    • Badge/plate: original vs replacement, gilding intact
+    • Chinstrap: original leather vs replacement
+    • Interior lining: intact vs deteriorated
+    • Moth damage to wool or fur elements
+
+  STEP 6 — PROVENANCE FLAGS: These dramatically increase value:
+    • Named to a specific officer (label with officer name = significant premium)
+    • Original carrying case/box present
+    • Documentation, letters, or photographs with the item
+    • Known regimental history
+
+  STEP 7 — FRATERNAL VS TRUE MILITARY: Many 19th century fraternal organizations (Masons, Knights Templar, GAR, Odd Fellows) used military-style dress that looks identical to real military items. These are common and worth significantly less than authentic military.
+    • Knights Templar cross = fraternal, not military
+    • GAR badge = veteran's organization, not combat military
+    • True military items have branch-specific regimental markings
+
+  VALUATION GUIDANCE FOR MILITARY ANTIQUES:
+    • Generic dress hat, no provenance: $75-200
+    • Named to officer or rare regiment: $300-1,000+
+    • Civil War Confederate items: 3-5x Union equivalent
+    • Complete with original case and documentation: 2-3x base value
+    • Fraternal items (Masonic, KT): 50-70% of true military value
+    • Foreign military (British, French, German): specialist market, value varies widely
+
+  FOR ALL MILITARY ANTIQUES: Always identify whether an item is true military, fraternal/ceremonial, or reproduction. Never assume high value without visible regiment/provenance markers. The shell badge identification is critical — describe exactly what is depicted on any badge or plate visible.
+
 - For electronics/tech: Follow this strict visual identification process — read model numbers directly, do not guess.
 
   ═══ ELECTRONICS / TECH ═══
