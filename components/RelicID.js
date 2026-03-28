@@ -575,12 +575,46 @@ async function callDeepValuation(analysis, userExtras) {
   return parseJson(text);
 }
 
+// ─── PIN SYSTEM ────────────────────────────────────────────
+function getStoredPin() {
+  try { return localStorage.getItem("relicid-pin") || null; } catch { return null; }
+}
+function storePin(pin) {
+  try { localStorage.setItem("relicid-pin", pin); } catch {}
+}
+
 // ─── STORAGE ───────────────────────────────────────────────
 async function loadCollection() {
   try { const raw = localStorage.getItem("relicid-collection"); return raw ? JSON.parse(raw) : []; } catch { return []; }
 }
 async function saveCollection(items) {
   try { localStorage.setItem("relicid-collection", JSON.stringify(items)); } catch (e) { console.error("Save:", e); }
+}
+
+// Only save items that have a deep scan (valuation present)
+function getDeepScannedItems(items) {
+  return items.filter(item => !!item.valuation);
+}
+
+async function saveToCloud(pin, items) {
+  try {
+    const deepItems = getDeepScannedItems(items);
+    if (deepItems.length === 0) return;
+    await fetch("/api/collection/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin, items: deepItems }),
+    });
+  } catch (e) { console.error("[RelicID] Cloud save failed:", e); }
+}
+
+async function loadFromCloud(pin) {
+  try {
+    const res = await fetch(`/api/collection/load?pin=${encodeURIComponent(pin)}`);
+    const data = await res.json();
+    if (data.found && data.items?.length > 0) return data.items;
+    return null;
+  } catch (e) { console.error("[RelicID] Cloud load failed:", e); return null; }
 }
 
 // ─── COLLECTION STATS ─────────────────────────────────────
@@ -1227,6 +1261,92 @@ function AdminHeader({ onUnlock }) {
   );
 }
 
+// ─── PIN MODAL ───────────────────────────────────────────
+function PinModal({ mode, onComplete, onClose }) {
+  const [pin, setPin] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleCreate = async () => {
+    if (!/^\d{4}$/.test(pin)) { setError("PIN must be exactly 4 digits"); return; }
+    if (pin !== confirm) { setError("PINs don't match"); return; }
+    setLoading(true);
+    onComplete(pin);
+  };
+
+  const handleRestore = async () => {
+    if (!/^\d{4}$/.test(pin)) { setError("PIN must be exactly 4 digits"); return; }
+    setLoading(true);
+    const items = await loadFromCloud(pin);
+    if (!items) { setError("No collection found for that PIN"); setLoading(false); return; }
+    onComplete(pin, items);
+  };
+
+  const isCreate = mode === "create";
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.8)" }} />
+      <div style={{ position: "relative", width: "100%", maxWidth: 360, background: C.bg, borderRadius: 16, border: `1px solid ${C.border}`, padding: "32px 24px" }}>
+        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", color: C.textMuted, fontSize: 20, cursor: "pointer" }}>×</button>
+
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>🔐</div>
+          <h2 style={{ fontFamily: F.display, fontSize: 22, fontWeight: 700, color: C.text, margin: "0 0 6px" }}>
+            {isCreate ? "Create Your Collection PIN" : "Restore Your Collection"}
+          </h2>
+          <p style={{ fontSize: 13, color: C.textDim, margin: 0, lineHeight: 1.5 }}>
+            {isCreate
+              ? "Your PIN saves your deep scans across devices. Write it down — there's no recovery if lost."
+              : "Enter your PIN to restore your collection on this device."}
+          </p>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 10, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 6 }}>
+            {isCreate ? "Choose a 4-digit PIN" : "Enter your PIN"}
+          </div>
+          <input
+            type="password" inputMode="numeric" maxLength={4} value={pin}
+            onChange={e => { setPin(e.target.value.replace(/\D/g, "")); setError(""); }}
+            placeholder="••••"
+            style={{ width: "100%", padding: "14px", background: C.bgSurface, border: `1px solid ${error ? C.danger : C.border}`, borderRadius: 8, color: C.text, fontFamily: F.mono, fontSize: 28, textAlign: "center", outline: "none", letterSpacing: 8 }}
+          />
+        </div>
+
+        {isCreate && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 10, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 6 }}>Confirm PIN</div>
+            <input
+              type="password" inputMode="numeric" maxLength={4} value={confirm}
+              onChange={e => { setConfirm(e.target.value.replace(/\D/g, "")); setError(""); }}
+              placeholder="••••"
+              style={{ width: "100%", padding: "14px", background: C.bgSurface, border: `1px solid ${error ? C.danger : C.border}`, borderRadius: 8, color: C.text, fontFamily: F.mono, fontSize: 28, textAlign: "center", outline: "none", letterSpacing: 8 }}
+            />
+          </div>
+        )}
+
+        {error && <div style={{ fontSize: 12, color: C.danger, textAlign: "center", marginBottom: 12 }}>{error}</div>}
+
+        <button
+          onClick={isCreate ? handleCreate : handleRestore}
+          disabled={loading || pin.length !== 4 || (isCreate && confirm.length !== 4)}
+          style={{ width: "100%", padding: "14px", background: pin.length === 4 ? `linear-gradient(135deg, ${C.accent}, ${C.accentDim})` : C.bgCard, color: pin.length === 4 ? C.bg : C.textMuted, border: "none", borderRadius: 8, cursor: pin.length === 4 ? "pointer" : "not-allowed", fontFamily: F.display, fontSize: 16, fontWeight: 600, marginBottom: 10 }}
+        >
+          {loading ? "Loading..." : isCreate ? "Save My Collection" : "Restore Collection"}
+        </button>
+
+        {isCreate && (
+          <div style={{ fontSize: 11, color: C.danger, textAlign: "center", lineHeight: 1.5 }}>
+            ⚠️ Your PIN cannot be recovered if lost. Write it down.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── DEEP SCAN RESULT POPUP ──────────────────────────────
 function DeepScanResultModal({ popup, onClose, onSeeBreakdown }) {
   if (!popup) return null;
@@ -1327,6 +1447,9 @@ export default function RelicID() {
 
   useEffect(() => {
     loadCollection().then(items => { setCollection(items); setLoaded(true); });
+    // Load stored PIN
+    const storedPin = getStoredPin();
+    if (storedPin) setActivePin(storedPin);
     setDeepScansRemaining(getDeepScanCredits());
 
     // Handle post-purchase redirect from Stripe
@@ -1478,6 +1601,12 @@ export default function RelicID() {
       await saveCollection(newColl);
       if (item._cacheKey) await setCachedResult(item._cacheKey, updated);
 
+      // ─── CLOUD SAVE (deep scans only) ───
+      const currentPin = getStoredPin();
+      if (currentPin) {
+        await saveToCloud(currentPin, newColl);
+      }
+
       // ─── TRIGGER DEEP SCAN POPUP ───
       const deepLow = parseDollar(valuation.low_estimate);
       const deepHigh = parseDollar(valuation.high_estimate);
@@ -1610,16 +1739,61 @@ export default function RelicID() {
         {tab === "collection" && !detailItem && (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
             {collection.length === 0 ? (
+              <div>
+                <div style={{ padding: "12px 16px", background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>🔐</span>
+                    <div style={{ fontSize: 11, color: C.textMuted }}>Have a PIN? Restore your collection.</div>
+                  </div>
+                  <button onClick={() => setPinModal("restore")} style={{ padding: "6px 14px", background: "transparent", color: C.accent, border: `1px solid ${C.accent}40`, borderRadius: 6, cursor: "pointer", fontFamily: F.body, fontSize: 12 }}>Restore</button>
+                </div>
               <div style={{ textAlign: "center", padding: "60px 20px", background: C.bgSurface, borderRadius: 12, border: `1px solid ${C.border}` }}>
                 <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📦</div>
                 <p style={{ fontFamily: F.display, fontSize: 18, color: C.textDim, margin: "0 0 8px" }}>No items yet</p>
                 <p style={{ fontSize: 13, color: C.textMuted, margin: "0 0 20px" }}>Scan your first item to start building your collection.</p>
                 <button onClick={() => setTab("scan")} style={{ padding: "10px 28px", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", borderRadius: 6, cursor: "pointer", fontFamily: F.display, fontSize: 14, fontWeight: 600 }}>Start Scanning</button>
               </div>
+              </div>
             ) : (() => {
               const stats = getCollectionStats(collection);
               return (
                 <>
+                  {/* ═══ PIN STATUS BAR ═══ */}
+                  <div style={{ padding: "12px 16px", background: C.bgCard, borderRadius: 10, border: `1px solid ${activePin ? C.accent + "40" : C.border}`, marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 16 }}>🔐</span>
+                      <div>
+                        <div style={{ fontSize: 11, fontFamily: F.mono, color: activePin ? C.accent : C.textMuted, fontWeight: 600 }}>
+                          {activePin ? `Collection PIN: ****` : "No PIN set"}
+                        </div>
+                        <div style={{ fontSize: 10, color: C.textMuted, lineHeight: 1.4 }}>
+                          {activePin ? "Deep scans sync across devices" : "Create a PIN to save your collection across devices"}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      {!activePin && (
+                        <button onClick={() => setPinModal("create")} style={{ padding: "6px 14px", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", borderRadius: 6, cursor: "pointer", fontFamily: F.display, fontSize: 13, fontWeight: 600 }}>
+                          Create PIN
+                        </button>
+                      )}
+                      {!activePin && (
+                        <button onClick={() => setPinModal("restore")} style={{ padding: "6px 14px", background: "transparent", color: C.accent, border: `1px solid ${C.accent}40`, borderRadius: 6, cursor: "pointer", fontFamily: F.body, fontSize: 12 }}>
+                          Restore
+                        </button>
+                      )}
+                      {activePin && (
+                        <button onClick={async () => {
+                          await saveToCloud(activePin, collection);
+                          setPinStatus("saved");
+                          setTimeout(() => setPinStatus(null), 2000);
+                        }} style={{ padding: "6px 14px", background: "transparent", color: C.accent, border: `1px solid ${C.accent}40`, borderRadius: 6, cursor: "pointer", fontFamily: F.body, fontSize: 12 }}>
+                          {pinStatus === "saved" ? "✓ Saved!" : "Sync Now"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
                     <div style={{ padding: "16px 12px", background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, textAlign: "center" }}>
                       <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 4 }}>Collection Value</div>
@@ -1713,6 +1887,33 @@ export default function RelicID() {
           <p style={{ fontSize: 11, color: C.textMuted, margin: 0 }}>RelicID · AI-powered identification & valuation · Not financial advice · getrelicid.com</p>
         </footer>
       </div>
+
+      {/* ═══ PIN MODAL ═══ */}
+      {pinModal && (
+        <PinModal
+          mode={pinModal}
+          onClose={() => setPinModal(null)}
+          onComplete={async (pin, restoredItems) => {
+            storePin(pin);
+            setActivePin(pin);
+            setPinModal(null);
+            if (restoredItems) {
+              // Merge restored items with local — restored items take priority
+              const localIds = new Set(collection.map(i => i.id));
+              const newItems = restoredItems.filter(i => !localIds.has(i.id));
+              const merged = [...collection, ...newItems];
+              setCollection(merged);
+              await saveCollection(merged);
+              setPurchaseMsg(`✓ Collection restored — ${restoredItems.length} deep scan${restoredItems.length !== 1 ? "s" : ""} loaded`);
+            } else {
+              // New PIN — save current deep scans to cloud
+              await saveToCloud(pin, collection);
+              setPurchaseMsg("✓ PIN created — collection will sync across devices");
+            }
+            setTimeout(() => setPurchaseMsg(null), 4000);
+          }}
+        />
+      )}
 
       {/* ═══ DEEP SCAN RESULT POPUP ═══ */}
       <DeepScanResultModal
