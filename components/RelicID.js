@@ -248,9 +248,16 @@ Respond ONLY with this JSON (no markdown, no backticks):
   "low_estimate": 25,
   "high_estimate": 150,
   "recent_sales": [
-    {"price": "$45", "platform": "eBay", "date": "Mar 15, 2026", "description": "Same item, raw/ungraded, similar condition"},
-    {"price": "$60", "platform": "TCGPlayer", "date": "Mar 10, 2026", "description": "Near Mint condition listing"}
+    {"price": "$45", "platform": "eBay", "date": "Mar 15, 2026", "description": "Raw/ungraded, similar condition"},
+    {"price": "$60", "platform": "TCGPlayer", "date": "Mar 10, 2026", "description": "Near Mint raw listing"}
   ],
+  "graded_highlight": {
+    "grade": "PSA 10",
+    "price": "$1200",
+    "platform": "eBay",
+    "date": "Feb 2026",
+    "note": "Requires near-perfect condition and professional grading"
+  },
   "demand_level": "High",
   "sell_speed": "Fast",
   "value_factors": ["Factor 1", "Factor 2"],
@@ -259,7 +266,12 @@ Respond ONLY with this JSON (no markdown, no backticks):
   "notes": "Any important caveats about condition, grading, edition, or market volatility"
 }
 
-IMPORTANT: low_estimate and high_estimate must be plain numbers reflecting the item's ACTUAL CONDITION (not best-case graded prices). recent_sales must be an array of objects with price, platform, date, and description fields. Only include sales/listings you actually found — never invent data.`;
+CRITICAL RULES FOR THIS JSON:
+- recent_sales must ONLY contain raw/ungraded sales. NEVER include PSA, BGS, CGC, or any graded sale in recent_sales. Graded sales skew the raw value and confuse users.
+- graded_highlight is OPTIONAL. Only include it if you found a real graded sale for a top grade (PSA 9, PSA 10, BGS 9.5, etc.). If no graded data exists or the item is not the type that gets graded, set graded_highlight to null.
+- graded_highlight should show the HIGHEST known graded sale you found — the jackpot scenario.
+- low_estimate and high_estimate must reflect RAW/UNGRADED value only at the item's actual condition.
+- Only include sales/listings you actually found — never invent data.`;
 };
 
 // ─── CATEGORY TRIGGER SYSTEM ──────────────────────────────
@@ -1146,6 +1158,42 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
       <div ref={deepResultRef} style={{ scrollMarginTop: 20 }} />
       {hasDeep && (
         <>
+          {/* ═══ HIGH-END POTENTIAL (Graded) ═══ */}
+          {v?.graded_highlight && v.graded_highlight.price && (
+            <div style={{
+              padding: "16px 18px",
+              background: `linear-gradient(135deg, rgba(201,165,85,0.08), rgba(201,165,85,0.03))`,
+              borderRadius: 12,
+              border: `1px solid ${C.accent}50`,
+              marginBottom: 16,
+              position: "relative",
+              overflow: "hidden",
+            }}>
+              {/* Subtle glow effect */}
+              <div style={{ position: "absolute", top: -20, right: -20, width: 80, height: 80, borderRadius: "50%", background: `radial-gradient(circle, ${C.accent}20 0%, transparent 70%)`, pointerEvents: "none" }} />
+
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: 16 }}>🔥</span>
+                <div style={{ fontSize: 9, fontFamily: F.mono, color: C.accent, textTransform: "uppercase", letterSpacing: 2, fontWeight: 700 }}>High-End Potential</div>
+                <div style={{ fontSize: 9, fontFamily: F.mono, padding: "2px 8px", borderRadius: 4, background: `${C.accent}15`, color: C.accent, border: `1px solid ${C.accent}30` }}>Graded Example</div>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
+                <div style={{ fontFamily: F.display, fontSize: 32, fontWeight: 700, color: C.accent }}>{v.graded_highlight.price}</div>
+                <div style={{ fontSize: 13, fontFamily: F.mono, color: C.textDim }}>{v.graded_highlight.grade}</div>
+                {v.graded_highlight.platform && <div style={{ fontSize: 11, color: C.textMuted }}>on {v.graded_highlight.platform}{v.graded_highlight.date ? ` · ${v.graded_highlight.date}` : ""}</div>}
+              </div>
+
+              <div style={{ fontSize: 12, color: C.textDim, lineHeight: 1.5, marginBottom: 8 }}>
+                {v.graded_highlight.note || "Requires near-perfect condition and professional grading"}
+              </div>
+
+              <div style={{ fontSize: 11, color: C.textMuted, fontStyle: "italic", padding: "8px 12px", background: `${C.bg}80`, borderRadius: 6, border: `1px solid ${C.border}` }}>
+                ⚠️ Most raw cards sell for significantly less unless professionally graded. Your raw value is shown above.
+              </div>
+            </div>
+          )}
+
           <RecentSales sales={v?.recent_sales} loading={false} isUnique={!!a?.is_unique} searchQuery={a?.search_query || a?.item_name} category={a?.category} />
           {v?.value_factors?.length > 0 && (
             <div style={{ padding: 14, background: C.bgCard, borderRadius: 8, border: `1px solid ${C.border}`, marginBottom: 10 }}>
