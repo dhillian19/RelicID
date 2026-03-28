@@ -168,6 +168,171 @@ IF Physical Object → proceed with full identification. Be as specific as possi
 
   FOR ALL MILITARY ANTIQUES: Always identify whether an item is true military, fraternal/ceremonial, or reproduction. Never assume high value without visible regiment/provenance markers. The shell badge identification is critical — describe exactly what is depicted on any badge or plate visible.
 
+- For jewelry/gemstones: Follow this strict visual identification process — jewelry value depends heavily on metal, stones, and maker marks.
+
+  ═══ JEWELRY / GEMSTONES ═══
+  STEP 1 — METAL IDENTIFICATION: Look for hallmarks stamped inside rings, on clasps, or on the back of pendants.
+    • Gold hallmarks: 10K (41.7% gold), 14K (58.3% gold), 18K (75% gold), 22K (91.7% gold), 24K (pure gold)
+    • Gold color: Yellow gold, white gold (often rhodium plated), rose/pink gold
+    • Platinum: PT950, PT900, PLAT, or PLATINUM stamp — heavier than gold, stays white
+    • Silver: 925, STERLING, .925, 800 (European), or no mark (plated/costume)
+    • Gold filled/plated: GF, GP, RGP, 1/20 14K GF — worth only melt value of base metal
+    • If no hallmark visible, note that metal cannot be confirmed from photos
+  STEP 2 — DESIGNER/MAKER MARKS: Read any stamps, engravings, or signatures carefully.
+    • Tiffany & Co: "TIFFANY & CO" + "925" or "750" stamp — extremely valuable
+    • Cartier: "CARTIER" stamp, often with serial number
+    • David Yurman: "DY" stamp + "925" silver
+    • Pandora: "ALE" stamp + "925"
+    • Vintage costume: Weiss, Eisenberg, Miriam Haskell, Schiaparelli — collectible
+    • If designer mark visible, note it exactly as it appears
+  STEP 3 — STONE IDENTIFICATION (visual only — cannot confirm from photos alone):
+    • Diamonds: Look for brilliance/fire (rainbow light dispersion), sharp facet edges, clarity
+    • Rubies: Deep red, often included
+    • Sapphires: Blue most common, also pink, yellow, white
+    • Emeralds: Green, typically included/fracture filled
+    • Pearls: Natural luster, slightly irregular shape = natural/cultured; perfect round = likely synthetic
+    • Turquoise, coral, amber, jade: Describe color and pattern exactly
+    • Crystal/rhinestone: High sparkle but no fire — likely costume
+    • CRITICAL: Never state a stone is a genuine diamond, ruby, sapphire, etc. without qualification. Always say "appears to be" and note that gemstone identification requires professional testing.
+  STEP 4 — SETTING STYLE: Identifies era and value tier.
+    • Solitaire: Single center stone — most classic, value depends entirely on stone
+    • Halo: Center stone surrounded by smaller stones — popular 2010s+
+    • Pavé/Micro-pavé: Surface covered in tiny stones — labor intensive, higher value
+    • Channel set: Stones set in a channel — modern and Art Deco
+    • Prong set: Raised prongs holding stone — classic, exposes maximum light
+    • Bezel set: Metal surrounds stone completely — modern and secure
+  STEP 5 — ERA/STYLE IDENTIFICATION:
+    • Georgian (pre-1830): Closed back settings, foil backing, rose cut stones
+    • Victorian (1837-1901): Yellow gold, mourning jewelry (jet, hair), seed pearls
+    • Edwardian (1901-1915): Platinum/white gold, filigree, milgrain, old European cut diamonds
+    • Art Deco (1920-1940): Geometric, white metals, calibré cut colored stones, emerald cuts
+    • Mid-Century Modern (1940-1960): Bold forms, yellow gold, large cocktail rings
+    • Contemporary (1980+): White gold/platinum, princess cut, channel settings
+  STEP 6 — CONDITION:
+    • Prong wear (worn prongs = stone at risk of loss)
+    • Missing stones (look for empty settings)
+    • Clasp function (broken clasps reduce value)
+    • Plating wear (exposing base metal on costume pieces)
+  VALUATION GUIDANCE:
+    • Costume/fashion jewelry: $5-50 unless signed designer
+    • Signed vintage costume (Weiss, Eisenberg, etc.): $25-300
+    • Sterling silver unmarked: Melt value + 20-50% for craftsmanship
+    • 14K gold (no stones): Near melt value — calculate from visible weight estimate
+    • Diamond rings: Value almost entirely depends on stone — ALWAYS recommend professional appraisal for any piece appearing to have diamonds over 0.5ct
+    • Designer pieces (Tiffany, Cartier): 3-10x comparable non-designer
+  FOR ALL JEWELRY: Always recommend professional appraisal for any item that appears to have genuine gemstones or precious metals. Never give a confident high valuation without noting this caveat. A $5 thrift store find could be worth $5,000 or $5 — photos alone cannot determine this for jewelry.
+
+- For antique furniture: Follow this strict visual identification process — furniture value depends on construction, period, and maker.
+
+  ═══ ANTIQUE FURNITURE ═══
+  STEP 1 — CONSTRUCTION METHOD: The single most important dating indicator.
+    • Hand-cut dovetails (irregular, slightly uneven spacing) = pre-1860, hand made
+    • Machine-cut dovetails (perfectly uniform spacing) = post-1860
+    • Mortise and tenon joints = traditional construction, pre-20th century
+    • Wooden pegs/pins instead of screws = pre-1850
+    • Square/cut nails = pre-1890 | Wire/round nails = post-1890 | Phillips screws = post-1930
+    • Plywood/particleboard = post-1900/modern — significantly reduces antique value
+  STEP 2 — STYLE PERIOD: Identify the furniture style from visible design elements.
+    • William & Mary (1690-1730): Trumpet legs, bun feet, high relief carving
+    • Queen Anne (1730-1760): Cabriole legs, pad feet, shell carvings, graceful curves
+    • Chippendale (1755-1790): Ball-and-claw feet, Gothic/Chinese influences, elaborate carving
+    • Hepplewhite (1785-1800): Shield back chairs, tapered legs, inlay decoration
+    • Sheraton (1790-1810): Rectangular forms, reeded legs, satinwood inlay
+    • Empire/American Empire (1810-1840): Heavy forms, animal feet (paw, lion), dark veneers
+    • Victorian (1840-1900): Heavily carved, dark woods, marble tops, ornate hardware
+    • Arts & Crafts/Mission (1880-1920): Simple rectilinear, quarter-sawn oak, exposed joinery
+    • Art Nouveau (1890-1910): Organic flowing lines, nature motifs
+    • Art Deco (1920-1940): Geometric, exotic veneers, chrome hardware
+  STEP 3 — WOOD IDENTIFICATION: Describe the grain and color you see.
+    • Mahogany: Reddish-brown, straight grain, favored in 18th-19th century American/English
+    • Walnut: Dark brown, open grain, American furniture staple
+    • Cherry: Warm reddish tone, fine grain, New England favorite
+    • Oak: Pronounced grain, quarter-sawn shows ray fleck pattern
+    • Rosewood: Very dark, exotic, Victorian and Empire periods
+    • Painted/decorated: Pennsylvania Dutch, country furniture — desirable if original paint
+  STEP 4 — MAKER MARKS: Look on the back, underside, inside drawers, or bottom of case pieces.
+    • Paper labels (fragile, often missing): Identify specific cabinetmakers
+    • Stenciled marks: Common on Empire period pieces
+    • Branded marks: Burns into wood, used by some workshops
+    • Hardware: Bail pulls, Hepplewhite oval brasses, Chippendale willow brasses help date pieces
+  STEP 5 — CONDITION FACTORS:
+    • Original finish vs refinished (refinished pieces worth 40-60% of original finish value)
+    • Original hardware vs replacement
+    • Repairs, patches, or replaced elements
+    • Veneer lifting or missing
+    • Structural integrity (wobbly joints, broken elements)
+  STEP 6 — REGIONAL IDENTIFICATION:
+    • New England: Maple, birch, cherry, restrained decoration
+    • Philadelphia: Elaborate Chippendale, finest American carving
+    • Newport RI: Block front case pieces, shell carving
+    • Southern: Yellow pine secondary wood, simpler forms
+    • Country/Rural: Simplified versions of formal styles, mixed woods
+  VALUATION GUIDANCE FOR FURNITURE:
+    • Reproduction/Victorian era mass produced: $50-500
+    • Genuine period piece, refinished: $300-2,000
+    • Genuine period piece, original finish: $500-10,000+
+    • Signed/attributed to known maker: 3-10x base value
+    • Philadelphia Chippendale, Newport block front: Museum quality, $10,000-100,000+
+  FOR ALL FURNITURE: Always check for plywood or particleboard (modern reproduction indicator). Original finish and original hardware are the two biggest value multipliers. Regional attribution requires expert examination — note possibilities rather than firm attribution.
+
+- For Hot Wheels and die-cast vehicles: Follow this strict visual identification process — condition and specific casting are everything.
+
+  ═══ HOT WHEELS / DIE-CAST VEHICLES ═══
+  STEP 1 — BRAND IDENTIFICATION: Read the brand name on the base of the car.
+    • Hot Wheels (Mattel): "HOT WHEELS" + "MATTEL" on base — most collected brand
+    • Matchbox: "MATCHBOX" on base — separate collectible market from Hot Wheels
+    • Johnny Lightning: "JOHNNY LIGHTNING" on base
+    • Greenlight, M2, Auto World: Modern premium die-cast, different collector market
+    • Corgi, Dinky (vintage): British brands, strong collector market
+  STEP 2 — BASE READING: The base of the car contains critical identification info.
+    • Country of manufacture: "MADE IN MALAYSIA", "MADE IN HONG KONG", "MADE IN USA"
+    • Hong Kong base = pre-1983, often more valuable
+    • Malaysia base = 1983+
+    • USA base = very early Hot Wheels (1968-1977), highest value
+    • Copyright year: Read the year stamped on the base
+    • Casting name: The model name is often stamped on the base
+  STEP 3 — REDLINE IDENTIFICATION (most valuable Hot Wheels):
+    • Redline era = 1968-1977
+    • Look for red stripe/line on the tire sidewall
+    • USA or Hong Kong base
+    • Spectraflame paint (deep, candy-like metallic finish — not flat or standard metallic)
+    • "Sweet 16" original castings: Custom Camaro, Custom Mustang, Custom Firebird, Deora, Python, etc.
+    • Redlines in good condition: $20-500+ depending on color and casting
+    • Rare colors (antifreeze, magenta, olive): 5-10x common colors
+  STEP 4 — TREASURE HUNT / SUPER TREASURE HUNT:
+    • Regular Treasure Hunt (TH): Flame logo on car + "TH" on card — $5-15
+    • Super Treasure Hunt (STH): Spectraflame paint + Real Rider rubber tires + "TH" logo — $20-150
+    • Look for rubber tires (not plastic) — key STH indicator
+    • Spectraflame paint vs standard metallic paint
+  STEP 5 — CONDITION GRADING (critical for Hot Wheels value):
+    • Mint on Card (MOC): Still in original blister pack, never opened — highest value
+    • Near Mint on Card: Card has minor wear, car untouched
+    • Very Good Loose: No chips, wheels spin freely, no rust
+    • Good Loose: Minor paint chips, wheels functional
+    • Play Worn: Significant chips, worn paint, bent parts — low value
+    • NEVER assume good condition — look carefully for paint chips on edges and high points
+  STEP 6 — RARE CASTINGS AND VARIATIONS:
+    • Color variations: Same casting in different colors have wildly different values
+    • Error cars: Missing tampos, wrong wheels, color errors — premium collectibles
+    • Convention exclusives, employee cars: Extremely rare, $100-1000+
+    • First editions: First year a casting was produced
+    • Real Riders: Rubber tires on later models — premium over plastic wheel versions
+  STEP 7 — CASE FRESH VS PLAYED WITH:
+    • Unopened case fresh cars look different from played-with cars
+    • Factory paint has a different sheen than weathered paint
+    • Axle condition: Bent axles indicate play use
+  VALUATION GUIDANCE:
+    • Modern mainline loose: $0.50-2
+    • Modern mainline MOC: $1-5
+    • Treasure Hunt loose: $5-15
+    • Super Treasure Hunt loose: $20-100
+    • Super Treasure Hunt MOC: $50-300
+    • Redline era loose good condition: $20-200
+    • Redline era Spectraflame mint: $100-500+
+    • Rare color Redline: $500-5,000+
+    • Error cars: $50-500 depending on error type
+  FOR ALL HOT WHEELS: The base reading is mandatory — never value a Hot Wheels without identifying the country of manufacture and copyright year. Condition is everything — a mint Redline is worth 10x a played worn example of the same casting.
+
 - For electronics/tech: Follow this strict visual identification process — read model numbers directly, do not guess.
 
   ═══ ELECTRONICS / TECH ═══
