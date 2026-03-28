@@ -233,6 +233,15 @@ CRITICAL SEARCH RULES:
    f. Try multiple searches: one for the medium + subject, one for the medium + size, one broader if needed
    g. In recent_sales, label comps clearly as "Comparable piece" not "Same item"
    h. In notes, explain how you arrived at the estimate since there's no exact match
+10. FOR TRADING CARDS (Pokemon, MTG, Sports Cards, Yu-Gi-Oh, etc.): Cards have multiple distinct marketplaces that price very differently. You MUST search ALL of these:
+   a. TCGPlayer — the most accurate marketplace for Pokemon, MTG, and other TCG cards. Search for the EXACT card name, set, and condition. TCGPlayer prices are the industry standard for raw ungraded cards. Note the market price, low price, and median price.
+   b. eBay SOLD listings — filter by completed/sold. Search raw/ungraded separately from graded (PSA/BGS/CGC). eBay raw prices are often LOWER than TCGPlayer — do not use eBay as the sole source.
+   c. For sports cards — also check PWCC, Goldin, and eBay sold. Graded and raw are completely separate markets.
+   d. NEVER average eBay raw prices with graded prices. Report them separately.
+   e. SPECIAL VARIANTS: Always check if the card has known variants (holo swirl patterns, shadowless, error cards, 1st Edition) that command significant premium. A "swirl" holo pattern on vintage Pokemon cards can be worth 2-5x a non-swirl copy.
+   f. PRICE RECONCILIATION: If TCGPlayer shows significantly higher prices than eBay sold, report BOTH and explain the difference. Do not just use the lower number. The true market value is the price a willing buyer pays — use the higher of the two if both are legitimate sold comps.
+   g. CONDITION TIERS for cards: Damaged/HP ($X) → MP ($X) → LP ($X) → Good ($X) → VG ($X) → NM ($X) → Mint ($X). Report the range that matches the item's actual condition.
+   h. For the low_estimate use the lowest recent sold comp matching the condition. For high_estimate use the highest recent sold comp matching the condition. Do NOT cap the estimate just because eBay raw prices are low if TCGPlayer shows higher.
 
 Respond ONLY with this JSON (no markdown, no backticks):
 {
