@@ -1442,6 +1442,9 @@ export default function RelicID() {
   const [scanResult, setScanResult] = useState(null);
   const [error, setError] = useState(null);
   const [deepScanPopup, setDeepScanPopup] = useState(null);
+  const [pinModal, setPinModal] = useState(null);
+  const [activePin, setActivePin] = useState(null);
+  const [pinStatus, setPinStatus] = useState(null);
   const scanLock = useRef(false);
   const deepResultRef = useRef(null);
 
