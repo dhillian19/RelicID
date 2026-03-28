@@ -364,10 +364,14 @@ const FREE_DEEP_SCANS = 3; // starter credits for new users
 
 // ─── PLATFORM SEARCH LINKS ──────────────────────────────
 function buildSearchUrl(platform, query) {
-  const q = encodeURIComponent(query);
+  // Strip "sold" keyword from TCGPlayer queries — TCGPlayer doesn't support sold filter
+  const cleanQuery = platform?.toLowerCase().includes("tcgplayer")
+    ? query.replace(/sold/gi, "").replace(/\s+/g, " ").trim()
+    : query;
+  const q = encodeURIComponent(cleanQuery);
   switch (platform?.toLowerCase()) {
     case "ebay": return `https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Complete=1&LH_Sold=1&_sop=13`;
-    case "tcgplayer": return `https://www.tcgplayer.com/search/all/product?q=${q}`;
+    case "tcgplayer": return `https://www.tcgplayer.com/search/all/product?q=${q}&view=grid`;
     case "mercari": return `https://www.mercari.com/search/?keyword=${q}`;
     case "poshmark": return `https://poshmark.com/search?query=${q}`;
     case "etsy": return `https://www.etsy.com/search?q=${q}`;
@@ -377,7 +381,7 @@ function buildSearchUrl(platform, query) {
     case "pricecharting": return `https://www.pricecharting.com/search-products?q=${q}`;
     case "depop": return `https://www.depop.com/search/?q=${q}`;
     case "swappa": return `https://swappa.com/buy/${q}`;
-    case "tcgplayer_sold": return `https://www.tcgplayer.com/search/all/product?q=${q}&view=grid&inStock=false&Language=English`;
+    case "tcgplayer_sold": return `https://www.tcgplayer.com/search/all/product?q=${q}&view=grid`;
     default: return `https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Complete=1&LH_Sold=1&_sop=13`;
   }
 }
