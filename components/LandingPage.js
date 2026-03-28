@@ -57,7 +57,7 @@ function Hero() {
         AI Antique & Collectible Identifier
       </div>
       <h1 className="reveal" style={{ fontFamily: F.display, fontWeight: 700, lineHeight: 1.05, fontSize: "clamp(42px, 7vw, 76px)", marginBottom: 20, background: `linear-gradient(135deg, ${C.text}, #e8d5a0, ${C.accent})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-        Scan anything.<br/>See what it\'s worth.
+        Scan anything.<br/>See what it's worth.
       </h1>
       <p className="reveal" style={{ fontSize: "clamp(16px, 2.5vw, 20px)", color: C.textDim, maxWidth: 580, margin: "0 auto 40px", lineHeight: 1.6, fontWeight: 300 }}>
         Point your camera at any antique, collectible, trading card, Hot Wheels, jewelry, or thrift find. Get instant AI identification, real market value from actual sold listings, and a clear BUY or PASS recommendation.
@@ -89,8 +89,8 @@ function Hero() {
 function HowItWorks() {
   const steps = [
     { icon: "📸", title: "Snap a Photo", desc: "Take a photo of any antique, collectible, trading card, Hot Wheels, piece of jewelry, or thrift store find. Multiple photos improve accuracy." },
-    { icon: "⚡", title: "Get Instant ID & Value", desc: "RelicID\'s AI identifies the exact item, reads maker marks and condition, and gives you a quick value estimate — all in under 10 seconds." },
-    { icon: "💰", title: "Know If It\'s a Deal", desc: "Run a Deep Scan to pull real sold prices from eBay, TCGPlayer, and resale platforms. Enter the asking price and get a clear BUY or PASS with flip profit calculated." },
+    { icon: "⚡", title: "Get Instant ID & Value", desc: "RelicID's AI identifies the exact item, reads maker marks and condition, and gives you a quick value estimate — all in under 10 seconds." },
+    { icon: "💰", title: "Know If It's a Deal", desc: "Run a Deep Scan to pull real sold prices from eBay, TCGPlayer, and resale platforms. Enter the asking price and get a clear BUY or PASS with flip profit calculated." },
   ];
   return (
     <section id="how" style={{ maxWidth: 1100, margin: "0 auto", padding: "80px 28px" }}>
@@ -126,7 +126,7 @@ function UseCases() {
       <div style={{ fontFamily: F.mono, fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: C.accent, marginBottom: 12, textAlign: "center" }}>Works On Everything</div>
       <h2 style={{ fontFamily: F.display, fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 700, color: C.text, marginBottom: 16, textAlign: "center" }}>Your AI antique and collectible identifier.</h2>
       <p style={{ fontSize: 15, color: C.textDim, textAlign: "center", maxWidth: 560, margin: "0 auto 48px", lineHeight: 1.6 }}>
-        From vintage pottery to Pokémon cards, Hot Wheels to diamond rings — RelicID identifies what it is and tells you what it\'s actually worth on today\'s market.
+        From vintage pottery to Pokémon cards, Hot Wheels to diamond rings — RelicID identifies what it is and tells you what it's actually worth on today's market.
       </p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
         {cases.map((c, i) => (
@@ -166,9 +166,9 @@ function VerdictDemo() {
         <div className="reveal" style={{ padding: 32, borderRadius: 16, textAlign: "center", background: "rgba(239,68,68,0.06)", border: "2px solid rgba(239,68,68,0.25)" }}>
           <div style={{ width: 20, height: 20, borderRadius: "50%", margin: "0 auto 12px", background: C.pass, boxShadow: "0 0 20px rgba(239,68,68,0.4)" }} />
           <div style={{ fontFamily: F.display, fontSize: 32, fontWeight: 700, letterSpacing: 3, color: C.pass }}>PASS</div>
-          <div style={{ fontSize: 13, color: C.textDim, marginTop: 6 }}>Overpriced — you\'d likely lose money</div>
+          <div style={{ fontSize: 13, color: C.textDim, marginTop: 6 }}>Overpriced — you'd likely lose money</div>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 20, flexWrap: "wrap" }}>
-            {[{ label: "They Want", val: "$120" }, { label: "Market Value", val: "$45" }, { label: "You\'d Lose", val: "-$75" }].map((s, i) => (
+            {[{ label: "They Want", val: "$120" }, { label: "Market Value", val: "$45" }, { label: "You'd Lose", val: "-$75" }].map((s, i) => (
               <div key={i} style={{ padding: "8px 14px", background: "rgba(0,0,0,0.3)", borderRadius: 8, border: `1px solid ${C.border}` }}>
                 <div style={{ fontFamily: F.mono, fontSize: 8, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>{s.label}</div>
                 <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: C.pass }}>{s.val}</div>
@@ -184,9 +184,9 @@ function VerdictDemo() {
 function WhySection() {
   const reasons = [
     { title: "Real prices, not guesses", desc: "Deep Scan pulls actual sold listings from eBay, TCGPlayer, and resale platforms. You see what people actually paid — not what some random seller is hoping for." },
-    { title: "Identifies what others can\'t", desc: "Reads maker marks on antique pottery, identifies Pokemon card editions, spots Hot Wheels Redlines, reads jewelry hallmarks — the details that determine real value." },
-    { title: "Built for fast decisions", desc: "You\'re standing in a thrift store or at an estate sale. Someone else is eyeing the same thing. RelicID gives you the answer in seconds so you can move with confidence." },
-    { title: "Condition-aware pricing", desc: "A mint-condition item and a beat-up one aren\'t worth the same. RelicID reads condition from your photos and adjusts the valuation accordingly." },
+    { title: "Identifies what others can't", desc: "Reads maker marks on antique pottery, identifies Pokemon card editions, spots Hot Wheels Redlines, reads jewelry hallmarks — the details that determine real value." },
+    { title: "Built for fast decisions", desc: "You're standing in a thrift store or at an estate sale. Someone else is eyeing the same thing. RelicID gives you the answer in seconds so you can move with confidence." },
+    { title: "Condition-aware pricing", desc: "A mint-condition item and a beat-up one aren't worth the same. RelicID reads condition from your photos and adjusts the valuation accordingly." },
   ];
   return (
     <section style={{ maxWidth: 1100, margin: "0 auto", padding: "60px 28px 80px" }}>
@@ -212,7 +212,7 @@ function FinalCTA() {
           Next time you find something interesting — scan it.
         </h2>
         <p style={{ fontSize: 16, color: C.textDim, maxWidth: 500, margin: "0 auto 32px", lineHeight: 1.6 }}>
-          The best antique and collectible identifier app available. Free to start — no account required. Just point, shoot, and find out what it\'s worth.
+          The best antique and collectible identifier app available. Free to start — no account required. Just point, shoot, and find out what it's worth.
         </p>
         <a href="/scan" style={{ display: "inline-block", padding: "16px 40px", borderRadius: 10, fontFamily: F.display, fontSize: 18, fontWeight: 600, textDecoration: "none", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", letterSpacing: 0.5 }}>
           Try RelicID Free
