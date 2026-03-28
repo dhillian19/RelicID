@@ -11,9 +11,9 @@ const C = {
   buy: "#4ade80", pass: "#ef4444",
 };
 const F = {
-  display: "'Cormorant Garamond', Georgia, serif",
-  body: "'Nunito Sans', 'Segoe UI', sans-serif",
-  mono: "'JetBrains Mono', monospace",
+  display: "\'Cormorant Garamond\', Georgia, serif",
+  body: "\'Nunito Sans\', \'Segoe UI\', sans-serif",
+  mono: "\'JetBrains Mono\', monospace",
 };
 
 // ─── SCROLL OBSERVER ─────────────────────────────────────
@@ -37,8 +37,6 @@ function useScrollReveal() {
   return ref;
 }
 
-// ─── COMPONENTS ──────────────────────────────────────────
-
 function Nav() {
   return (
     <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", maxWidth: 1100, margin: "0 auto", padding: "24px 28px" }}>
@@ -56,13 +54,13 @@ function Hero() {
   return (
     <section style={{ maxWidth: 1100, margin: "0 auto", padding: "80px 28px 60px", textAlign: "center" }}>
       <div className="reveal" style={{ display: "inline-block", fontFamily: F.mono, fontSize: 11, color: C.accent, padding: "6px 16px", borderRadius: 20, border: "1px solid rgba(201,165,85,0.25)", background: C.accentGlow, letterSpacing: 2, textTransform: "uppercase", marginBottom: 28 }}>
-        AI-Powered Value Scanner
+        AI Antique & Collectible Identifier
       </div>
       <h1 className="reveal" style={{ fontFamily: F.display, fontWeight: 700, lineHeight: 1.05, fontSize: "clamp(42px, 7vw, 76px)", marginBottom: 20, background: `linear-gradient(135deg, ${C.text}, #e8d5a0, ${C.accent})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-        Scan anything.<br/>See what it's worth.
+        Scan anything.<br/>See what it\'s worth.
       </h1>
-      <p className="reveal" style={{ fontSize: "clamp(16px, 2.5vw, 20px)", color: C.textDim, maxWidth: 560, margin: "0 auto 40px", lineHeight: 1.6, fontWeight: 300 }}>
-        Point your camera at any item and instantly get an ID, real market value, and a clear BUY or PASS recommendation. Works at thrift stores, garage sales, and anywhere you find stuff worth flipping.
+      <p className="reveal" style={{ fontSize: "clamp(16px, 2.5vw, 20px)", color: C.textDim, maxWidth: 580, margin: "0 auto 40px", lineHeight: 1.6, fontWeight: 300 }}>
+        Point your camera at any antique, collectible, trading card, Hot Wheels, jewelry, or thrift find. Get instant AI identification, real market value from actual sold listings, and a clear BUY or PASS recommendation.
       </p>
       <div className="reveal" style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
         <a href="/scan" style={{ padding: "16px 40px", borderRadius: 10, fontFamily: F.display, fontSize: 18, fontWeight: 600, textDecoration: "none", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", letterSpacing: 0.5, transition: "transform 0.2s, box-shadow 0.2s" }}>
@@ -74,7 +72,7 @@ function Hero() {
       </div>
       <div className="reveal" style={{ display: "flex", justifyContent: "center", gap: 40, flexWrap: "wrap", maxWidth: 700, margin: "48px auto 0", paddingTop: 32, borderTop: `1px solid ${C.border}` }}>
         {[
-          { num: "3", label: "Free scans per day" },
+          { num: "3", label: "Free scans to start" },
           { num: "<10s", label: "Instant identification" },
           { num: "Live", label: "Real sold prices" },
         ].map((s, i) => (
@@ -90,9 +88,9 @@ function Hero() {
 
 function HowItWorks() {
   const steps = [
-    { icon: "📸", title: "Snap a Photo", desc: "Take a photo of anything — a thrift store find, a trading card, a pair of shoes, something you're curious about." },
-    { icon: "⚡", title: "Get an Instant ID", desc: "RelicID identifies the exact item, assesses condition, and gives you a quick value estimate — all in seconds." },
-    { icon: "💰", title: "Know If It's a Deal", desc: "Run a Deep Scan to pull real sold prices. Enter what they're asking and get a clear BUY or PASS with flip profit calculated." },
+    { icon: "📸", title: "Snap a Photo", desc: "Take a photo of any antique, collectible, trading card, Hot Wheels, piece of jewelry, or thrift store find. Multiple photos improve accuracy." },
+    { icon: "⚡", title: "Get Instant ID & Value", desc: "RelicID\'s AI identifies the exact item, reads maker marks and condition, and gives you a quick value estimate — all in under 10 seconds." },
+    { icon: "💰", title: "Know If It\'s a Deal", desc: "Run a Deep Scan to pull real sold prices from eBay, TCGPlayer, and resale platforms. Enter the asking price and get a clear BUY or PASS with flip profit calculated." },
   ];
   return (
     <section id="how" style={{ maxWidth: 1100, margin: "0 auto", padding: "80px 28px" }}>
@@ -114,20 +112,23 @@ function HowItWorks() {
 
 function UseCases() {
   const cases = [
-    { icon: "🛒", title: "Thrift Stores", desc: "Spot underpriced gems hiding on the shelves" },
-    { icon: "🏷️", title: "Garage Sales", desc: "Know what something's worth before you haggle" },
-    { icon: "🃏", title: "Trading Cards", desc: "ID the exact card, set, and edition in seconds" },
-    { icon: "👟", title: "Sneakers & Clothes", desc: "Check resale value on brands and styles" },
-    { icon: "📦", title: "Marketplace Finds", desc: "Verify if that listing is actually a good deal" },
-    { icon: "🏺", title: "Vintage & Collectibles", desc: "From vinyl to ceramics — find what it's really worth" },
-    { icon: "🔌", title: "Electronics", desc: "Old consoles, cameras, tools — they might surprise you" },
-    { icon: "❓", title: "Random Stuff", desc: "No idea what it is? Scan it anyway." },
+    { icon: "🏺", title: "Antiques & Collectibles", desc: "Pottery, ceramics, silver, military items — identify maker marks and get real appraisal value" },
+    { icon: "🃏", title: "Trading Cards", desc: "Pokemon, MTG, sports cards — identify exact set, edition, and condition in seconds" },
+    { icon: "🚗", title: "Hot Wheels & Die-Cast", desc: "Redlines, Treasure Hunts, rare variations — know what that car is actually worth" },
+    { icon: "💎", title: "Jewelry & Gemstones", desc: "Read hallmarks, identify metals and stones, spot designer pieces" },
+    { icon: "🛋️", title: "Antique Furniture", desc: "Date construction methods, identify period styles, spot original vs reproduction" },
+    { icon: "👟", title: "Sneakers & Streetwear", desc: "Verify colorways, check resale value, identify limited editions" },
+    { icon: "🔌", title: "Electronics & Consoles", desc: "Old consoles, cameras, vintage tech — find exact model and current market value" },
+    { icon: "🛒", title: "Thrift & Garage Sales", desc: "Spot underpriced gems and avoid overpriced junk in seconds" },
   ];
   return (
     <section style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 28px 80px" }}>
       <div style={{ fontFamily: F.mono, fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: C.accent, marginBottom: 12, textAlign: "center" }}>Works On Everything</div>
-      <h2 style={{ fontFamily: F.display, fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 700, color: C.text, marginBottom: 48, textAlign: "center" }}>Scan it. Price it. Decide.</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+      <h2 style={{ fontFamily: F.display, fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 700, color: C.text, marginBottom: 16, textAlign: "center" }}>Your AI antique and collectible identifier.</h2>
+      <p style={{ fontSize: 15, color: C.textDim, textAlign: "center", maxWidth: 560, margin: "0 auto 48px", lineHeight: 1.6 }}>
+        From vintage pottery to Pokémon cards, Hot Wheels to diamond rings — RelicID identifies what it is and tells you what it\'s actually worth on today\'s market.
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
         {cases.map((c, i) => (
           <div key={i} className="reveal" style={{ padding: 20, background: C.bgSurface, borderRadius: 10, border: `1px solid ${C.border}`, textAlign: "center", transition: "border-color 0.3s, background 0.3s" }}>
             <div style={{ fontSize: 32, marginBottom: 10 }}>{c.icon}</div>
@@ -144,19 +145,17 @@ function VerdictDemo() {
   return (
     <section style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 28px 80px" }}>
       <div style={{ fontFamily: F.mono, fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: C.accent, marginBottom: 12, textAlign: "center" }}>The Verdict</div>
-      <h2 style={{ fontFamily: F.display, fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 700, color: C.text, marginBottom: 48, textAlign: "center" }}>Stop guessing. Start knowing.</h2>
+      <h2 style={{ fontFamily: F.display, fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 700, color: C.text, marginBottom: 16, textAlign: "center" }}>Stop guessing. Start knowing.</h2>
+      <p style={{ fontSize: 15, color: C.textDim, textAlign: "center", maxWidth: 520, margin: "0 auto 48px", lineHeight: 1.6 }}>
+        RelicID pulls real sold prices from eBay, TCGPlayer, and resale platforms — then tells you exactly whether to buy or pass.
+      </p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24, alignItems: "center" }}>
-        {/* BUY */}
         <div className="reveal" style={{ padding: 32, borderRadius: 16, textAlign: "center", background: "rgba(74,222,128,0.06)", border: "2px solid rgba(74,222,128,0.25)" }}>
           <div style={{ width: 20, height: 20, borderRadius: "50%", margin: "0 auto 12px", background: C.buy, boxShadow: "0 0 20px rgba(74,222,128,0.4)" }} />
           <div style={{ fontFamily: F.display, fontSize: 32, fontWeight: 700, letterSpacing: 3, color: C.buy }}>BUY</div>
           <div style={{ fontSize: 13, color: C.textDim, marginTop: 6 }}>Good deal — potential profit ahead</div>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 20, flexWrap: "wrap" }}>
-            {[
-              { label: "You Pay", val: "$20" },
-              { label: "Market Value", val: "$85" },
-              { label: "Flip Profit", val: "+$65" },
-            ].map((s, i) => (
+            {[{ label: "You Pay", val: "$20" }, { label: "Market Value", val: "$85" }, { label: "Flip Profit", val: "+$65" }].map((s, i) => (
               <div key={i} style={{ padding: "8px 14px", background: "rgba(0,0,0,0.3)", borderRadius: 8, border: `1px solid ${C.border}` }}>
                 <div style={{ fontFamily: F.mono, fontSize: 8, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>{s.label}</div>
                 <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: C.buy }}>{s.val}</div>
@@ -164,17 +163,12 @@ function VerdictDemo() {
             ))}
           </div>
         </div>
-        {/* PASS */}
         <div className="reveal" style={{ padding: 32, borderRadius: 16, textAlign: "center", background: "rgba(239,68,68,0.06)", border: "2px solid rgba(239,68,68,0.25)" }}>
           <div style={{ width: 20, height: 20, borderRadius: "50%", margin: "0 auto 12px", background: C.pass, boxShadow: "0 0 20px rgba(239,68,68,0.4)" }} />
           <div style={{ fontFamily: F.display, fontSize: 32, fontWeight: 700, letterSpacing: 3, color: C.pass }}>PASS</div>
-          <div style={{ fontSize: 13, color: C.textDim, marginTop: 6 }}>Overpriced — you'd likely lose money</div>
+          <div style={{ fontSize: 13, color: C.textDim, marginTop: 6 }}>Overpriced — you\'d likely lose money</div>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 20, flexWrap: "wrap" }}>
-            {[
-              { label: "They Want", val: "$120" },
-              { label: "Market Value", val: "$45" },
-              { label: "You'd Lose", val: "-$75" },
-            ].map((s, i) => (
+            {[{ label: "They Want", val: "$120" }, { label: "Market Value", val: "$45" }, { label: "You\'d Lose", val: "-$75" }].map((s, i) => (
               <div key={i} style={{ padding: "8px 14px", background: "rgba(0,0,0,0.3)", borderRadius: 8, border: `1px solid ${C.border}` }}>
                 <div style={{ fontFamily: F.mono, fontSize: 8, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>{s.label}</div>
                 <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: C.pass }}>{s.val}</div>
@@ -190,9 +184,9 @@ function VerdictDemo() {
 function WhySection() {
   const reasons = [
     { title: "Real prices, not guesses", desc: "Deep Scan pulls actual sold listings from eBay, TCGPlayer, and resale platforms. You see what people actually paid — not what some random seller is hoping for." },
-    { title: "Works on almost anything", desc: "Trading cards, sneakers, vintage toys, power tools, designer bags, random kitchen gadgets. If it exists, RelicID can probably tell you what it's worth." },
-    { title: "Built for fast decisions", desc: "You're standing in a thrift store. Someone else is eyeing the same thing. RelicID gives you the answer in seconds so you can move with confidence." },
-    { title: "Condition-aware pricing", desc: "A mint-condition item and a beat-up one aren't worth the same. RelicID reads condition from your photos and adjusts the valuation accordingly." },
+    { title: "Identifies what others can\'t", desc: "Reads maker marks on antique pottery, identifies Pokemon card editions, spots Hot Wheels Redlines, reads jewelry hallmarks — the details that determine real value." },
+    { title: "Built for fast decisions", desc: "You\'re standing in a thrift store or at an estate sale. Someone else is eyeing the same thing. RelicID gives you the answer in seconds so you can move with confidence." },
+    { title: "Condition-aware pricing", desc: "A mint-condition item and a beat-up one aren\'t worth the same. RelicID reads condition from your photos and adjusts the valuation accordingly." },
   ];
   return (
     <section style={{ maxWidth: 1100, margin: "0 auto", padding: "60px 28px 80px" }}>
@@ -215,14 +209,17 @@ function FinalCTA() {
     <section style={{ maxWidth: 1100, margin: "0 auto", padding: "60px 28px 100px", textAlign: "center" }}>
       <div style={{ padding: "60px 40px", borderRadius: 20, background: `linear-gradient(135deg, ${C.accentGlow}, ${C.bgCard}, ${C.accentGlow})`, border: "1px solid rgba(201,165,85,0.2)" }}>
         <h2 style={{ fontFamily: F.display, fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 700, color: C.text, marginBottom: 12 }}>
-          Next time you see something interesting — scan it.
+          Next time you find something interesting — scan it.
         </h2>
-        <p style={{ fontSize: 16, color: C.textDim, maxWidth: 460, margin: "0 auto 32px", lineHeight: 1.6 }}>
-          Three free scans a day. No account required. Just point, shoot, and find out what it's worth.
+        <p style={{ fontSize: 16, color: C.textDim, maxWidth: 500, margin: "0 auto 32px", lineHeight: 1.6 }}>
+          The best antique and collectible identifier app available. Free to start — no account required. Just point, shoot, and find out what it\'s worth.
         </p>
         <a href="/scan" style={{ display: "inline-block", padding: "16px 40px", borderRadius: 10, fontFamily: F.display, fontSize: 18, fontWeight: 600, textDecoration: "none", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", letterSpacing: 0.5 }}>
           Try RelicID Free
         </a>
+        <div style={{ marginTop: 20, fontSize: 12, color: C.textMuted }}>
+          Works on antiques · collectibles · trading cards · Hot Wheels · jewelry · sneakers · electronics · and more
+        </div>
       </div>
     </section>
   );
@@ -231,12 +228,11 @@ function FinalCTA() {
 function Footer() {
   return (
     <footer style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 28px 40px", borderTop: `1px solid ${C.border}`, textAlign: "center" }}>
-      <p style={{ fontSize: 11, color: C.textMuted }}>RelicID · AI-powered identification & valuation · Not financial advice · getrelicid.com</p>
+      <p style={{ fontSize: 11, color: C.textMuted }}>RelicID · AI-powered antique & collectible identifier · Not financial advice · getrelicid.com</p>
     </footer>
   );
 }
 
-// ─── MAIN LANDING PAGE ───────────────────────────────────
 export default function LandingPage() {
   const containerRef = useScrollReveal();
 
@@ -249,10 +245,7 @@ export default function LandingPage() {
         }
         .reveal { opacity: 0; transform: translateY(24px); transition: none; }
         .revealed { animation: revealUp 0.5s ease forwards; }
-
-        /* Hover effects via CSS */
         a[href="/scan"]:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(201,165,85,0.3); }
-
         * { box-sizing: border-box; }
         html { scroll-behavior: smooth; }
         ::-webkit-scrollbar { width: 6px; }
@@ -260,7 +253,6 @@ export default function LandingPage() {
         ::-webkit-scrollbar-thumb { background: ${C.border}; border-radius: 3px; }
       `}</style>
 
-      {/* Ambient glow */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0, background: "radial-gradient(ellipse 600px 400px at 20% 10%, rgba(201,165,85,0.07) 0%, transparent 70%), radial-gradient(ellipse 500px 500px at 80% 60%, rgba(201,165,85,0.04) 0%, transparent 70%)" }} />
 
       <div style={{ position: "relative", zIndex: 1 }}>
