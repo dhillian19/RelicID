@@ -783,7 +783,7 @@ async function callLightAnalysis(images) {
   content.push({ type: "text", text: LIGHT_PROMPT(images.length) });
   const res = await fetch("/api/scan", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1500, messages: [{ role: "user", content }] }),
+    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, messages: [{ role: "user", content }] }),
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error.message);
@@ -795,7 +795,7 @@ async function callDeepValuation(analysis, userExtras) {
   console.log("[RelicID] Deep valuation — calling /api/deep-scan");
   const res = await fetch("/api/deep-scan", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 8192, messages: [{ role: "user", content: DEEP_PROMPT(analysis, userExtras) }] }),
+    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 4096, messages: [{ role: "user", content: DEEP_PROMPT(analysis, userExtras) }] }),
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error.message);
