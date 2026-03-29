@@ -1,6 +1,31 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+
+// ─── PWA INSTALL HOOK ─────────────────────────────────────
+function useInstallPrompt() {
+  const [prompt, setPrompt] = useState(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  useEffect(() => {
+    if (window.matchMedia("(display-mode: standalone)").matches) { setIsInstalled(true); return; }
+    const handler = (e) => { e.preventDefault(); setPrompt(e); };
+    window.addEventListener("beforeinstallprompt", handler);
+    window.addEventListener("appinstalled", () => setIsInstalled(true));
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+  const install = async () => {
+    if (!prompt) return false;
+    prompt.prompt();
+    const result = await prompt.userChoice;
+    if (result.outcome === "accepted") setIsInstalled(true);
+    setPrompt(null);
+    return result.outcome === "accepted";
+  };
+  // Show install button if: native prompt available, OR on iOS (which doesn't fire beforeinstallprompt)
+  const isIOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const canInstall = !!prompt || (isIOS && !isInstalled);
+  return { canInstall, isInstalled, isIOS, install };
+}
 
 // ─── DESIGN SYSTEM (matches the app) ─────────────────────
 const C = {
@@ -37,15 +62,22 @@ function useScrollReveal() {
   return ref;
 }
 
-function Nav() {
+function Nav({ canInstall, isIOS, onInstall }) {
   return (
     <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", maxWidth: 1100, margin: "0 auto", padding: "24px 28px" }}>
       <a href="/" style={{ fontFamily: F.display, fontSize: 26, fontWeight: 700, background: `linear-gradient(135deg, ${C.accent}, #e8d5a0, ${C.accentDim})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", textDecoration: "none" }}>
         RelicID
       </a>
-      <a href="/scan" style={{ padding: "10px 24px", borderRadius: 8, fontFamily: F.body, fontSize: 14, fontWeight: 600, textDecoration: "none", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", letterSpacing: 0.3, transition: "transform 0.2s" }}>
-        Open App
-      </a>
+      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        {canInstall && (
+          <button onClick={onInstall} style={{ padding: "10px 20px", borderRadius: 8, fontFamily: F.body, fontSize: 13, fontWeight: 600, background: "transparent", color: C.accent, border: `1px solid rgba(201,165,85,0.3)`, cursor: "pointer", transition: "all 0.2s" }}>
+            {isIOS ? "Add to Home" : "Install App"}
+          </button>
+        )}
+        <a href="/scan" style={{ padding: "10px 24px", borderRadius: 8, fontFamily: F.body, fontSize: 14, fontWeight: 600, textDecoration: "none", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", letterSpacing: 0.3, transition: "transform 0.2s" }}>
+          Open App
+        </a>
+      </div>
     </nav>
   );
 }
@@ -204,6 +236,38 @@ function WhySection() {
   );
 }
 
+function InstallSection({ canInstall, isIOS, onInstall }) {
+  return (
+    <section style={{ maxWidth: 1100, margin: "0 auto", padding: "0 28px 60px" }}>
+      <div style={{ padding: "40px 32px", borderRadius: 16, background: C.bgCard, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 20 }}>
+        <div style={{ flex: "1 1 300px" }}>
+          <div style={{ fontSize: 28, marginBottom: 8 }}>📱</div>
+          <h3 style={{ fontFamily: F.display, fontSize: 24, fontWeight: 600, color: C.text, margin: "0 0 6px" }}>Get the app</h3>
+          <p style={{ fontSize: 14, color: C.textDim, margin: 0, lineHeight: 1.6 }}>
+            {isIOS
+              ? "Tap the share button in Safari, then \"Add to Home Screen\" to install RelicID as an app on your iPhone or iPad."
+              : "Install RelicID on your phone for instant access. No app store needed — works on any device."}
+          </p>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
+          {canInstall && !isIOS && (
+            <button onClick={onInstall} style={{ padding: "14px 36px", borderRadius: 10, fontFamily: F.display, fontSize: 16, fontWeight: 600, background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", cursor: "pointer", letterSpacing: 0.5 }}>
+              Install RelicID
+            </button>
+          )}
+          {isIOS && (
+            <div style={{ padding: "12px 20px", borderRadius: 10, background: C.bgSurface, border: `1px solid ${C.border}`, textAlign: "center" }}>
+              <div style={{ fontSize: 13, color: C.text, marginBottom: 4 }}>In Safari, tap <span style={{ fontSize: 16 }}>⎙</span> then</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: C.accent }}>"Add to Home Screen"</div>
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: C.textMuted }}>Works on iPhone, Android, and desktop</div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function FinalCTA() {
   return (
     <section style={{ maxWidth: 1100, margin: "0 auto", padding: "60px 28px 100px", textAlign: "center" }}>
@@ -235,6 +299,15 @@ function Footer() {
 
 export default function LandingPage() {
   const containerRef = useScrollReveal();
+  const { canInstall, isInstalled, isIOS, install } = useInstallPrompt();
+
+  const handleInstall = () => {
+    if (isIOS) {
+      // Can't trigger programmatically on iOS — the InstallSection explains how
+      return;
+    }
+    install();
+  };
 
   return (
     <div ref={containerRef} style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: F.body }}>
@@ -256,12 +329,13 @@ export default function LandingPage() {
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0, background: "radial-gradient(ellipse 600px 400px at 20% 10%, rgba(201,165,85,0.07) 0%, transparent 70%), radial-gradient(ellipse 500px 500px at 80% 60%, rgba(201,165,85,0.04) 0%, transparent 70%)" }} />
 
       <div style={{ position: "relative", zIndex: 1 }}>
-        <Nav />
+        <Nav canInstall={canInstall && !isInstalled} isIOS={isIOS} onInstall={handleInstall} />
         <Hero />
         <HowItWorks />
         <UseCases />
         <VerdictDemo />
         <WhySection />
+        {!isInstalled && <InstallSection canInstall={canInstall} isIOS={isIOS} onInstall={handleInstall} />}
         <FinalCTA />
         <Footer />
       </div>
