@@ -1,0 +1,25 @@
+{
+  "name": "RelicID — Scan Anything. See What It's Worth.",
+  "short_name": "RelicID",
+  "description": "AI-powered item identification and valuation. Scan any item to get instant ID, real market value, and a BUY or PASS recommendation.",
+  "start_url": "/scan",
+  "display": "standalone",
+  "background_color": "#0f0e0b",
+  "theme_color": "#0f0e0b",
+  "orientation": "portrait",
+  "categories": ["shopping", "utilities", "finance"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
