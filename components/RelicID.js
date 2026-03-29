@@ -621,6 +621,10 @@ function buildSearchUrl(platform, query) {
   }
 }
 
+function buildEbayListingUrl(itemName) {
+  return `https://www.ebay.com/sl/prelist/suggest?keywords=${encodeURIComponent(itemName)}`;
+}
+
 // ─── CATEGORY-AWARE PLATFORM LINKS ───────────────────────
 function getCategoryPlatforms(category) {
   switch (category) {
@@ -948,7 +952,7 @@ function PhotoSlot({ label, hint, dataUrl, onAdd, onRemove }) {
         <div onClick={() => ref.current?.click()} style={{ borderRadius: 8, border: `2px dashed ${C.border}`, aspectRatio: "1", background: C.bgSurface, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <div style={{ fontSize: 24, opacity: 0.4, marginBottom: 4 }}>+</div>
           <div style={{ fontSize: 11, color: C.textMuted, textAlign: "center", padding: "0 8px" }}>{hint}</div>
-          <input ref={ref} type="file" accept="image/*" capture="environment" onChange={(e) => { const f = e.target.files?.[0]; if (f) onAdd(f); }} style={{ display: "none" }} />
+          <input ref={ref} type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) onAdd(f); }} style={{ display: "none" }} />
         </div>
       )}
     </div>
@@ -1493,6 +1497,11 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
 
       {/* ═══ ACTION BUTTONS ═══ */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        {hasDeep && a?.item_name && (
+          <a href={buildEbayListingUrl(a.item_name)} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: "12px 20px", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", borderRadius: 8, cursor: "pointer", fontFamily: F.body, fontSize: 13, fontWeight: 600, textDecoration: "none", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            List on eBay
+          </a>
+        )}
         <button onClick={exportText} style={{ flex: 1, padding: "12px 20px", background: C.bgCard, color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 8, cursor: "pointer", fontFamily: F.body, fontSize: 13, fontWeight: 600 }}>📄 Export Report</button>
         <button onClick={onDelete} style={{ padding: "12px 20px", background: C.bgCard, color: C.danger, border: `1px solid ${C.danger}50`, borderRadius: 8, cursor: "pointer", fontFamily: F.body, fontSize: 13, fontWeight: 600 }}>🗑️ Delete</button>
       </div>
