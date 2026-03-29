@@ -300,10 +300,11 @@ function Footer() {
 export default function LandingPage() {
   const containerRef = useScrollReveal();
   const { canInstall, isInstalled, isIOS, install } = useInstallPrompt();
+  const [showIOSGuide, setShowIOSGuide] = useState(false);
 
   const handleInstall = () => {
     if (isIOS) {
-      // Can't trigger programmatically on iOS — the InstallSection explains how
+      setShowIOSGuide(true);
       return;
     }
     install();
@@ -339,6 +340,33 @@ export default function LandingPage() {
         <FinalCTA />
         <Footer />
       </div>
+
+      {/* ═══ iOS INSTALL GUIDE OVERLAY ═══ */}
+      {showIOSGuide && (
+        <div onClick={() => setShowIOSGuide(false)} style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "20px 20px 40px" }}>
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.7)" }} />
+          <div onClick={(e) => e.stopPropagation()} style={{ position: "relative", width: "100%", maxWidth: 360, background: C.bg, borderRadius: 16, border: `1px solid ${C.border}`, padding: "28px 24px", textAlign: "center" }}>
+            <button onClick={() => setShowIOSGuide(false)} style={{ position: "absolute", top: 12, right: 16, background: "none", border: "none", color: C.textMuted, fontSize: 20, cursor: "pointer" }}>×</button>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>📱</div>
+            <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 700, color: C.text, marginBottom: 12 }}>Install RelicID</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16, textAlign: "left", marginBottom: 20 }}>
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div style={{ width: 28, height: 28, borderRadius: 14, background: C.accentGlow, border: `1px solid ${C.accent}40`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: F.mono, fontSize: 13, fontWeight: 700, color: C.accent }}>1</div>
+                <div style={{ fontSize: 14, color: C.text, lineHeight: 1.5 }}>Tap the <strong style={{ color: C.accent }}>Share</strong> button <span style={{ fontSize: 18, verticalAlign: "middle" }}>⎙</span> at the bottom of Safari</div>
+              </div>
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div style={{ width: 28, height: 28, borderRadius: 14, background: C.accentGlow, border: `1px solid ${C.accent}40`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: F.mono, fontSize: 13, fontWeight: 700, color: C.accent }}>2</div>
+                <div style={{ fontSize: 14, color: C.text, lineHeight: 1.5 }}>Scroll down and tap <strong style={{ color: C.accent }}>"Add to Home Screen"</strong></div>
+              </div>
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div style={{ width: 28, height: 28, borderRadius: 14, background: C.accentGlow, border: `1px solid ${C.accent}40`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: F.mono, fontSize: 13, fontWeight: 700, color: C.accent }}>3</div>
+                <div style={{ fontSize: 14, color: C.text, lineHeight: 1.5 }}>Tap <strong style={{ color: C.accent }}>"Add"</strong> — RelicID appears on your home screen</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: C.textMuted }}>Works best in Safari</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
