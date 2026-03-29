@@ -1925,6 +1925,7 @@ export default function RelicID() {
   const [deepScansRemaining, setDeepScansRemaining] = useState(0);
   const [showPaywall, setShowPaywall] = useState(false);
   const [purchaseMsg, setPurchaseMsg] = useState(null);
+  const [iosBannerDismissed, setIosBannerDismissed] = useState(false);
 
   const [photos, setPhotos] = useState([
     { label: "Front", hint: "Main view", dataUrl: null, base64: null, mediaType: null },
@@ -1976,6 +1977,12 @@ export default function RelicID() {
 
   const hasAnyPhoto = photos.some(p => p.dataUrl);
   const activePhotos = photos.filter(p => p.base64);
+
+  // iOS install banner logic
+  const isIOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isStandalone = typeof window !== "undefined" && (window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone);
+  const showIOSBanner = isIOS && !isStandalone && !iosBannerDismissed && (() => { try { return !localStorage.getItem("relicid-ios-banner-dismissed"); } catch { return true; } })();
+  const dismissIOSBanner = () => { setIosBannerDismissed(true); try { localStorage.setItem("relicid-ios-banner-dismissed", "1"); } catch {} };
 
   const handlePurchase = async (plan) => {
     try {
@@ -2230,6 +2237,17 @@ export default function RelicID() {
           }} />
           <p style={{ fontFamily: F.body, fontWeight: 300, fontSize: 14, color: C.textMuted, marginTop: 4, letterSpacing: 0.5 }}>Scan anything. See what it's worth.</p>
         </header>
+
+        {/* ═══ iOS INSTALL BANNER ═══ */}
+        {showIOSBanner && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: C.bgCard, borderRadius: 10, border: `1px solid ${C.accent}30`, marginBottom: 16 }}>
+            <span style={{ fontSize: 20, flexShrink: 0 }}>📱</span>
+            <div style={{ flex: 1, fontSize: 12, color: C.textDim, lineHeight: 1.4 }}>
+              Add RelicID to your home screen — tap <strong style={{ color: C.accent }}>⎙ Share</strong> below, then <strong style={{ color: C.accent }}>"Add to Home Screen"</strong>
+            </div>
+            <button onClick={dismissIOSBanner} style={{ background: "none", border: "none", color: C.textMuted, fontSize: 16, cursor: "pointer", flexShrink: 0, padding: "4px" }}>×</button>
+          </div>
+        )}
 
         <TabBar active={tab} onChange={(t) => { setTab(t); setDetailItem(null); }} counts={collection.length} />
 
