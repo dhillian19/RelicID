@@ -381,6 +381,15 @@ IF Screen Capture → note this is a photo of a screen, BUT still identify and v
 
 IF Packaging Only → identify the product from the packaging, but note that the actual item is not visible. Value should reflect "sealed/boxed" pricing if applicable, or note that contents cannot be verified.
 
+SPECIAL CASE — BOOSTER PACKS / SEALED PACKS:
+If the item is a sealed trading card booster pack, booster box, blister pack, ETB, or any sealed trading card product (Pokémon, MTG, Yu-Gi-Oh, sports cards, etc.):
+- Set is_booster_pack to true
+- Identify the EXACT set name (e.g. "Scarlet & Violet — Prismatic Evolutions", "2024 Topps Series 1")
+- Identify the product type (single booster, 3-pack blister, ETB, booster box, etc.)
+- Set category to "Trading Cards"
+- For low_estimate/high_estimate: use the SEALED pack retail/market price, NOT the value of individual cards inside
+- The Deep Scan will handle the rip-or-keep analysis
+
 CRITICAL RULES:
 - Your #1 job is PRECISE IDENTIFICATION. Find the EXACT product: model number, set name, card number, edition, version, SKU, ISBN, year of release.
 - Only name a specific pattern, motif, or symbol if you are 100% certain. If there is ANY doubt, describe what you physically see instead.
@@ -407,6 +416,7 @@ Respond ONLY with this JSON (no markdown, no backticks):
   "key_features": ["Specific identifying details you can see — card numbers, set symbols, edition stamps, maker marks, model numbers, serial numbers, signatures, tags, labels"],
   "search_query": "The most effective search query to find this item's market value. For mass-produced items: be specific with brand, model, set, number, edition. For handmade/unique items: search for COMPARABLE pieces by medium + subject + size (e.g. 'large completed cross stitch pixel art video game sold' or 'handmade wrestling fan art framed sold'). For printed media: search for the print/poster specifically.",
   "is_unique": false,
+  "is_booster_pack": false,
   "confidence_percent": 75,
   "description": "2-3 sentence summary. Lead with object type if it's NOT a straightforward physical object. Then the specific identification, condition, and notable features. If multiple variants are possible, explain exactly what to look for to tell them apart.",
   "low_estimate": 20,
@@ -496,6 +506,70 @@ CRITICAL RULES FOR THIS JSON:
 - low_estimate and high_estimate must reflect RAW/UNGRADED value only at the item's actual condition.
 - Only include sales/listings you actually found — never invent data.`;
 };
+
+// ─── BOOSTER PACK DEEP PROMPT ─────────────────────────────
+const PACK_DEEP_PROMPT = (info) => {
+  return `You are a trading card market analyst. A user is holding a sealed booster pack and wants to know: "Is this pack worth buying or ripping?"
+
+Pack: ${info.item_name}
+Set/Product Line: ${info.style_period}
+Era: ${info.estimated_era}
+${info.search_query ? `Suggested Search: ${info.search_query}` : ""}
+
+RESEARCH THESE THINGS:
+1. Search for the current retail price of this exact sealed product
+2. Search for the expected value (EV) of opening this pack — average value of pulls across many openings
+3. Search for the top 3 most valuable chase cards in this set and their current market prices
+4. Search for pull rates / hit rates for valuable cards in this set
+5. Search for current market demand and collector sentiment for this set
+
+Respond ONLY with this JSON (no markdown, no backticks):
+{
+  "pack_name": "Full set name",
+  "product_type": "Booster Pack, ETB, Booster Box, Blister, etc.",
+  "pack_price": 4.99,
+  "expected_value": 3.50,
+  "hit_rate": 0.25,
+  "chase_cards": [
+    {"name": "Card Name", "value": 150, "rarity": "Illustration Rare"},
+    {"name": "Card Name 2", "value": 85, "rarity": "Special Art Rare"},
+    {"name": "Card Name 3", "value": 45, "rarity": "Full Art"}
+  ],
+  "set_label": "One of: Collector-focused set, Flip potential, Low resale demand, High demand set, Hype set, Budget-friendly, Legacy set",
+  "demand_level": "High, Medium, or Low",
+  "market_trend": "Rising, Stable, or Declining",
+  "insight": "ONE short confident sentence explaining why this pack is or isn't worth it.",
+  "notes": "Any important context about the set, reprints, or market shifts"
+}
+
+RULES:
+- pack_price is retail/market price as a plain number (no $)
+- expected_value is average pull value as a plain number
+- hit_rate is 0.0 to 1.0 — probability of pulling a card worth more than the pack price
+- chase_cards values are plain numbers
+- Be realistic — most booster packs return LESS than their retail price
+- Always provide data even with estimates`;
+};
+
+// ─── RIP SCORE CALCULATOR ─────────────────────────────────
+function calculateRipScore(packPrice, expectedValue, chaseCards, hitRate) {
+  const p = packPrice || 4.99;
+  const ev = expectedValue || 0;
+  const cv = chaseCards?.length > 0 ? Math.max(...chaseCards.map(c => c.value || 0)) : 0;
+  const hr = hitRate || 0.15;
+  const valueScore = ev / p;
+  const upsideScore = Math.log10(cv / p + 1);
+  const hitScore = hr;
+  const riskPenalty = Math.max(0, 1 - valueScore);
+  const rawScore = (valueScore * 5) + (upsideScore * 2) + (hitScore * 3) - (riskPenalty * 4);
+  const ripScore = Math.round(Math.max(1, Math.min(10, rawScore)));
+  let decision, decisionColor;
+  if (ripScore >= 8) { decision = "Strong buy opportunity"; decisionColor = C.buy; }
+  else if (ripScore >= 6) { decision = "Decent gamble"; decisionColor = C.accent; }
+  else if (ripScore >= 4) { decision = "High risk, low return"; decisionColor = C.risky; }
+  else { decision = "Not worth it"; decisionColor = C.pass; }
+  return { ripScore, decision, decisionColor };
+}
 
 // ─── CATEGORY TRIGGER SYSTEM ──────────────────────────────
 const CATEGORY_TRIGGERS = {
@@ -805,6 +879,22 @@ async function callDeepValuation(analysis, userExtras) {
   if (data.error) throw new Error(data.error.message);
   const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
   return parseJson(text);
+}
+
+async function callPackAnalysis(analysis) {
+  console.log("[RelicID] Pack analysis — calling /api/deep-scan");
+  const res = await fetch("/api/deep-scan", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 4096, messages: [{ role: "user", content: PACK_DEEP_PROMPT(analysis) }] }),
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
+  const result = parseJson(text);
+  if (!result) return null;
+  // Calculate Rip Score
+  const rip = calculateRipScore(result.pack_price, result.expected_value, result.chase_cards, result.hit_rate);
+  return { ...result, ...rip };
 }
 
 // ─── PIN SYSTEM ────────────────────────────────────────────
@@ -1149,6 +1239,84 @@ function CreditBadge({ remaining, onClick, style }) {
 }
 
 // ─── DETAIL VIEW ───────────────────────────────────────────
+// ─── RIP SCORE CARD ───────────────────────────────────────
+function RipScoreCard({ packData }) {
+  if (!packData) return null;
+  const { ripScore, decision, decisionColor, pack_name, product_type, pack_price, expected_value, hit_rate, chase_cards, set_label, insight, demand_level, market_trend } = packData;
+
+  const scoreBarColor = ripScore >= 8 ? C.buy : ripScore >= 6 ? C.accent : ripScore >= 4 ? C.risky : C.pass;
+  const scorePercent = (ripScore / 10) * 100;
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      {/* Main Rip Score */}
+      <div style={{ padding: 24, background: `${decisionColor}08`, borderRadius: 14, border: `2px solid ${decisionColor}40`, textAlign: "center", marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>Rip Score</div>
+        <div style={{ fontFamily: F.display, fontSize: 64, fontWeight: 700, color: decisionColor, lineHeight: 1 }}>{ripScore}<span style={{ fontSize: 24, color: C.textMuted }}>/10</span></div>
+        <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 600, color: decisionColor, marginTop: 8 }}>{decision}</div>
+        {set_label && <div style={{ fontSize: 11, fontFamily: F.mono, color: C.textDim, marginTop: 6, padding: "3px 12px", display: "inline-block", borderRadius: 4, background: C.bgCard, border: `1px solid ${C.border}` }}>{set_label}</div>}
+        {/* Score bar */}
+        <div style={{ marginTop: 16, height: 6, background: C.bg, borderRadius: 3, overflow: "hidden" }}>
+          <div style={{ width: `${scorePercent}%`, height: "100%", background: `linear-gradient(90deg, ${C.pass}, ${C.risky}, ${C.accent}, ${C.buy})`, borderRadius: 3, transition: "width 0.5s" }} />
+        </div>
+      </div>
+
+      {/* Value Summary */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
+        <div style={{ padding: 14, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, textAlign: "center" }}>
+          <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>Pack Price</div>
+          <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 700, color: C.text }}>${pack_price?.toFixed(2) || "?"}</div>
+        </div>
+        <div style={{ padding: 14, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, textAlign: "center" }}>
+          <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>Avg Pull Value</div>
+          <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 700, color: expected_value >= pack_price ? C.buy : C.pass }}>${expected_value?.toFixed(2) || "?"}</div>
+        </div>
+        <div style={{ padding: 14, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, textAlign: "center" }}>
+          <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>Hit Rate</div>
+          <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 700, color: C.accent }}>{hit_rate ? `${Math.round(hit_rate * 100)}%` : "?"}</div>
+        </div>
+      </div>
+
+      {/* Insight */}
+      {insight && (
+        <div style={{ padding: "12px 16px", background: C.bgCard, borderRadius: 8, border: `1px solid ${C.border}`, marginBottom: 16, textAlign: "center" }}>
+          <div style={{ fontSize: 14, color: C.text, lineHeight: 1.5, fontStyle: "italic" }}>{insight}</div>
+        </div>
+      )}
+
+      {/* Chase Cards */}
+      {chase_cards?.length > 0 && (
+        <div style={{ padding: 16, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 16 }}>
+          <div style={{ fontSize: 9, fontFamily: F.mono, color: C.accent, textTransform: "uppercase", letterSpacing: 2, marginBottom: 10 }}>Chase Highlights</div>
+          {chase_cards.map((card, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: i < chase_cards.length - 1 ? `1px solid ${C.border}` : "none" }}>
+              <div>
+                <div style={{ fontSize: 13, color: C.text, fontWeight: 600 }}>{card.name}</div>
+                {card.rarity && <div style={{ fontSize: 11, color: C.textMuted }}>{card.rarity}</div>}
+              </div>
+              <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 700, color: C.accent }}>${card.value}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Demand & Trend */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        {demand_level && <div style={{ padding: "6px 14px", background: C.bgCard, borderRadius: 6, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 11, color: C.textMuted }}>Demand:</span><span style={{ fontSize: 12, fontWeight: 600, color: demand_level === "High" ? C.buy : demand_level === "Medium" ? C.risky : C.textMuted }}>{demand_level}</span></div>}
+        {market_trend && <div style={{ padding: "6px 14px", background: C.bgCard, borderRadius: 6, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 11, color: C.textMuted }}>Trend:</span><span style={{ fontSize: 12, fontWeight: 600, color: market_trend?.toLowerCase().includes("rising") ? C.success : market_trend?.toLowerCase().includes("declin") ? C.danger : C.accent }}>{market_trend?.toLowerCase().includes("rising") ? "📈" : market_trend?.toLowerCase().includes("declin") ? "📉" : "📊"} {market_trend}</span></div>}
+      </div>
+
+      {/* Action Buttons */}
+      <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ flex: 1, padding: "14px 20px", background: ripScore >= 6 ? `${C.buy}15` : `${C.pass}15`, borderRadius: 10, border: `1px solid ${ripScore >= 6 ? C.buy + "40" : C.pass + "40"}`, textAlign: "center" }}>
+          <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 700, color: ripScore >= 6 ? C.buy : C.pass }}>{ripScore >= 6 ? "Buy / Rip It" : "Pass"}</div>
+          <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>{ripScore >= 6 ? "Worth the gamble" : "Save your money"}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScansRemaining, onShowPaywall, deepResultRef, cacheHit }) {
   const a = item.analysis;
   const v = item.valuation;
@@ -1156,6 +1324,7 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
   const objectType = a?.object_type || "Physical Object";
   const isPhysical = objectType === "Physical Object";
   const isScreen = objectType === "Screen Capture";
+  const isBoosterPack = !!a?.is_booster_pack;
 
   // Category trigger system
   const trigger = CATEGORY_TRIGGERS[a?.category];
@@ -1414,7 +1583,10 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
 
       {/* ═══ DEEP SCAN DATA ═══ */}
       <div ref={deepResultRef} style={{ scrollMarginTop: 20 }} />
-      {hasDeep && (
+      {hasDeep && isBoosterPack && item.packData && (
+        <RipScoreCard packData={item.packData} />
+      )}
+      {hasDeep && !isBoosterPack && (
         <>
           {/* ═══ HIGH-END POTENTIAL (Graded) ═══ */}
           {v?.graded_highlight && v.graded_highlight.price && (
@@ -1886,6 +2058,7 @@ export default function RelicID() {
         object_type_confidence: result.object_type_confidence || "Medium",
         object_type_note: result.object_type_note || null,
         is_unique: result.is_unique || false,
+        is_booster_pack: result.is_booster_pack || false,
       };
 
       const priceNum = askingPrice ? parseFloat(askingPrice) : null;
@@ -1950,43 +2123,69 @@ export default function RelicID() {
     setDeepScansRemaining(getDeepScanCredits());
     setDeepLoading(true);
     try {
-      const deep = await callDeepValuation(item.analysis, userExtras);
-      const fallback = { low_estimate: "N/A", high_estimate: "N/A", recent_sales: [], demand_level: "Unknown", sell_speed: "Unknown", value_factors: [], market_trend: "Unknown", where_to_sell: [], notes: "Could not parse." };
-      const valuation = deep ? { ...fallback, ...deep } : fallback;
+      // ─── BOOSTER PACK ROUTING ───
+      if (item.analysis?.is_booster_pack) {
+        const packResult = await callPackAnalysis(item.analysis);
+        const updated = { ...item, valuation: { low_estimate: packResult?.pack_price || 0, high_estimate: packResult?.pack_price || 0, demand_level: packResult?.demand_level || "Unknown", market_trend: packResult?.market_trend || "Unknown" }, packData: packResult };
+        if (scanResult?.id === item.id) setScanResult(updated);
+        if (detailItem?.id === item.id) setDetailItem(updated);
+        const newColl = collection.map(c => c.id === item.id ? updated : c);
+        setCollection(newColl);
+        await saveCollection(newColl);
+        if (item._cacheKey) await setCachedResult(item._cacheKey, updated);
 
-      const updated = { ...item, valuation };
-      if (scanResult?.id === item.id) setScanResult(updated);
-      if (detailItem?.id === item.id) setDetailItem(updated);
-      const newColl = collection.map(c => c.id === item.id ? updated : c);
-      setCollection(newColl);
-      await saveCollection(newColl);
-      if (item._cacheKey) await setCachedResult(item._cacheKey, updated);
+        // Popup for pack scan
+        setDeepScanPopup({
+          decision: packResult?.ripScore >= 6 ? "BUY" : "PASS",
+          lowVal: packResult?.pack_price,
+          highVal: packResult?.expected_value,
+          profit: null,
+          itemName: packResult?.pack_name || item.analysis?.item_name || "Pack",
+          askingPrice: item.askingPrice,
+          isPackScan: true,
+          ripScore: packResult?.ripScore,
+          packDecision: packResult?.decision,
+        });
+      } else {
+        // ─── STANDARD DEEP SCAN ───
+        const deep = await callDeepValuation(item.analysis, userExtras);
+        const fallback = { low_estimate: "N/A", high_estimate: "N/A", recent_sales: [], demand_level: "Unknown", sell_speed: "Unknown", value_factors: [], market_trend: "Unknown", where_to_sell: [], notes: "Could not parse." };
+        const valuation = deep ? { ...fallback, ...deep } : fallback;
 
-      // ─── SAVE TO SCAN CACHE (cross-user accuracy layer) ───
-      await saveScanCache(cacheKey, item.analysis, valuation);
+        const updated = { ...item, valuation };
+        if (scanResult?.id === item.id) setScanResult(updated);
+        if (detailItem?.id === item.id) setDetailItem(updated);
+        const newColl = collection.map(c => c.id === item.id ? updated : c);
+        setCollection(newColl);
+        await saveCollection(newColl);
+        if (item._cacheKey) await setCachedResult(item._cacheKey, updated);
 
-      // ─── CLOUD SAVE (deep scans only) ───
-      const currentPin = getStoredPin();
-      if (currentPin) {
-        await saveToCloud(currentPin, newColl);
+        // ─── SAVE TO SCAN CACHE (cross-user accuracy layer) ───
+        await saveScanCache(cacheKey, item.analysis, valuation);
+
+        // ─── CLOUD SAVE (deep scans only) ───
+        const currentPin = getStoredPin();
+        if (currentPin) {
+          await saveToCloud(currentPin, newColl);
+        }
+
+        // ─── TRIGGER DEEP SCAN POPUP ───
+        const deepLow = parseDollar(valuation.low_estimate);
+        const deepHigh = parseDollar(valuation.high_estimate);
+        const askingPriceVal = item.askingPrice;
+        const decision = askingPriceVal != null && deepLow != null && deepHigh != null
+          ? getDecision(askingPriceVal, deepLow, deepHigh) : null;
+        const profit = askingPriceVal != null && deepLow != null && deepHigh != null
+          ? getFlipProfit(askingPriceVal, deepLow, deepHigh) : null;
+        setDeepScanPopup({
+          decision,
+          lowVal: deepLow,
+          highVal: deepHigh,
+          profit,
+          itemName: item.analysis?.item_name || "Item",
+          askingPrice: askingPriceVal,
+        });
       }
-
-      // ─── TRIGGER DEEP SCAN POPUP ───
-      const deepLow = parseDollar(valuation.low_estimate);
-      const deepHigh = parseDollar(valuation.high_estimate);
-      const askingPriceVal = item.askingPrice;
-      const decision = askingPriceVal != null && deepLow != null && deepHigh != null
-        ? getDecision(askingPriceVal, deepLow, deepHigh) : null;
-      const profit = askingPriceVal != null && deepLow != null && deepHigh != null
-        ? getFlipProfit(askingPriceVal, deepLow, deepHigh) : null;
-      setDeepScanPopup({
-        decision,
-        lowVal: deepLow,
-        highVal: deepHigh,
-        profit,
-        itemName: item.analysis?.item_name || "Item",
-        askingPrice: askingPriceVal,
-      });
     } catch (e) {
       console.error("Deep analysis error:", e);
     } finally {
