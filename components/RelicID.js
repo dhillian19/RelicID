@@ -509,7 +509,9 @@ CRITICAL RULES FOR THIS JSON:
 
 // ─── BOOSTER PACK DEEP PROMPT ─────────────────────────────
 const PACK_DEEP_PROMPT = (info) => {
-  return `You are a trading card market analyst. A user is holding a sealed booster pack and wants to know: "Is this pack worth buying or ripping?"
+  return `You are a trading card set analyst. A user scanned a sealed booster pack and wants to know: "What are the best pulls in this set and how much are they worth?"
+
+This is NOT a financial analysis. Do NOT tell them "most packs lose money" — they know. They want to know what's worth chasing in this set.
 
 Pack: ${info.item_name}
 Set/Product Line: ${info.style_period}
@@ -517,57 +519,74 @@ Era: ${info.estimated_era}
 ${info.search_query ? `Suggested Search: ${info.search_query}` : ""}
 
 RESEARCH THESE THINGS:
-1. Search for the current retail price of this exact sealed product
-2. Search for the expected value (EV) of opening this pack — average value of pulls across many openings
-3. Search for the top 3 most valuable chase cards in this set and their current market prices
-4. Search for pull rates / hit rates for valuable cards in this set
-5. Search for current market demand and collector sentiment for this set
+1. Find the current retail price of this sealed product
+2. Find the TOP 5 most valuable cards in this set — search for actual sold prices on eBay, TCGPlayer, etc.
+3. Find the total number of chase-worthy cards in the set (cards worth $20+)
+4. Determine collector demand and hype level for this set
+5. Note any special variants, secret rares, or alternate arts that command premium
 
 Respond ONLY with this JSON (no markdown, no backticks):
 {
   "pack_name": "Full set name",
   "product_type": "Booster Pack, ETB, Booster Box, Blister, etc.",
   "pack_price": 4.99,
-  "expected_value": 3.50,
-  "hit_rate": 0.25,
+  "top_chase_value": 525,
+  "chase_card_count": 12,
   "chase_cards": [
-    {"name": "Card Name", "value": 150, "rarity": "Illustration Rare"},
-    {"name": "Card Name 2", "value": 85, "rarity": "Special Art Rare"},
-    {"name": "Card Name 3", "value": 45, "rarity": "Full Art"}
+    {"name": "Card Name", "value": 525, "rarity": "Showcase"},
+    {"name": "Card Name 2", "value": 459, "rarity": "Special Art Rare"},
+    {"name": "Card Name 3", "value": 410, "rarity": "Full Art"},
+    {"name": "Card Name 4", "value": 85, "rarity": "Holo Rare"},
+    {"name": "Card Name 5", "value": 45, "rarity": "Rare"}
   ],
-  "set_label": "One of: Collector-focused set, Flip potential, Low resale demand, High demand set, Hype set, Budget-friendly, Legacy set",
+  "set_label": "One of: Must-rip set, Chase-heavy set, Collector favorite, Solid set, Fan favorite, Budget-friendly, Weak chase, Legacy set",
   "demand_level": "High, Medium, or Low",
   "market_trend": "Rising, Stable, or Declining",
-  "insight": "ONE short confident sentence explaining why this pack is or isn't worth it.",
-  "notes": "Any important context about the set, reprints, or market shifts"
+  "insight": "ONE short confident sentence about what makes this set exciting or not. Focus on the chase cards and collector appeal — NOT expected value math.",
+  "notes": "Any context about the set — upcoming reprints, supply issues, collector sentiment"
 }
 
 RULES:
-- pack_price is retail/market price as a plain number (no $)
-- expected_value is average pull value as a plain number
-- hit_rate is 0.0 to 1.0 — probability of pulling a card worth more than the pack price
-- chase_cards values are plain numbers
-- Be realistic — most booster packs return LESS than their retail price
-- Always provide data even with estimates`;
+- pack_price is retail/market price as a plain number
+- top_chase_value is the highest single card value in the set as a plain number
+- chase_card_count is the total number of cards in the set worth $20 or more
+- chase_cards should be the TOP 5 most valuable, sorted highest to lowest, with REAL sold prices
+- Be honest about card values — use actual market data
+- The insight should be about what makes the CHASE exciting or boring, not about odds or EV
+- If a set has incredible chase cards, say so enthusiastically. If a set has nothing exciting, say that too.`;
 };
 
 // ─── RIP SCORE CALCULATOR ─────────────────────────────────
-function calculateRipScore(packPrice, expectedValue, chaseCards, hitRate) {
-  const p = packPrice || 4.99;
-  const ev = expectedValue || 0;
-  const cv = chaseCards?.length > 0 ? Math.max(...chaseCards.map(c => c.value || 0)) : 0;
-  const hr = hitRate || 0.15;
-  const valueScore = ev / p;
-  const upsideScore = Math.log10(cv / p + 1);
-  const hitScore = hr;
-  const riskPenalty = Math.max(0, 1 - valueScore);
-  const rawScore = (valueScore * 5) + (upsideScore * 2) + (hitScore * 3) - (riskPenalty * 4);
+// Measures "how fire is this set" — not financial EV
+function calculateRipScore(packData) {
+  const topChase = packData?.top_chase_value || (packData?.chase_cards?.length > 0 ? Math.max(...packData.chase_cards.map(c => c.value || 0)) : 0);
+  const chaseCount = packData?.chase_card_count || packData?.chase_cards?.length || 0;
+  const demand = packData?.demand_level || "Medium";
+  const trend = packData?.market_trend || "Stable";
+
+  // Factor 1: How valuable is the best card? (0-4 points)
+  // $500+ = 4, $200+ = 3, $50+ = 2, $20+ = 1, under $20 = 0
+  const topChaseScore = topChase >= 500 ? 4 : topChase >= 200 ? 3 : topChase >= 50 ? 2 : topChase >= 20 ? 1 : 0;
+
+  // Factor 2: How many chase-worthy cards exist? (0-3 points)
+  // 10+ = 3, 5+ = 2, 2+ = 1, 0-1 = 0
+  const depthScore = chaseCount >= 10 ? 3 : chaseCount >= 5 ? 2 : chaseCount >= 2 ? 1 : 0;
+
+  // Factor 3: Market demand (0-2 points)
+  const demandScore = demand === "High" ? 2 : demand === "Medium" ? 1 : 0;
+
+  // Factor 4: Trend bonus (0-1 points)
+  const trendScore = trend?.toLowerCase().includes("rising") ? 1 : 0;
+
+  const rawScore = topChaseScore + depthScore + demandScore + trendScore;
   const ripScore = Math.round(Math.max(1, Math.min(10, rawScore)));
+
   let decision, decisionColor;
-  if (ripScore >= 8) { decision = "Strong buy opportunity"; decisionColor = C.buy; }
-  else if (ripScore >= 6) { decision = "Decent gamble"; decisionColor = C.accent; }
-  else if (ripScore >= 4) { decision = "High risk, low return"; decisionColor = C.risky; }
-  else { decision = "Not worth it"; decisionColor = C.pass; }
+  if (ripScore >= 8) { decision = "Elite chase"; decisionColor = C.buy; }
+  else if (ripScore >= 6) { decision = "Great chase cards"; decisionColor = C.accent; }
+  else if (ripScore >= 4) { decision = "Decent set"; decisionColor = C.risky; }
+  else { decision = "Weak chase"; decisionColor = C.pass; }
+
   return { ripScore, decision, decisionColor };
 }
 
@@ -892,8 +911,8 @@ async function callPackAnalysis(analysis) {
   const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
   const result = parseJson(text);
   if (!result) return null;
-  // Calculate Rip Score
-  const rip = calculateRipScore(result.pack_price, result.expected_value, result.chase_cards, result.hit_rate);
+  // Calculate Rip Score based on chase quality
+  const rip = calculateRipScore(result);
   return { ...result, ...rip };
 }
 
@@ -1242,9 +1261,8 @@ function CreditBadge({ remaining, onClick, style }) {
 // ─── RIP SCORE CARD ───────────────────────────────────────
 function RipScoreCard({ packData }) {
   if (!packData) return null;
-  const { ripScore, decision, decisionColor, pack_name, product_type, pack_price, expected_value, hit_rate, chase_cards, set_label, insight, demand_level, market_trend } = packData;
+  const { ripScore, decision, decisionColor, pack_name, product_type, pack_price, top_chase_value, chase_card_count, chase_cards, set_label, insight, demand_level, market_trend, notes } = packData;
 
-  const scoreBarColor = ripScore >= 8 ? C.buy : ripScore >= 6 ? C.accent : ripScore >= 4 ? C.risky : C.pass;
   const scorePercent = (ripScore / 10) * 100;
 
   return (
@@ -1261,42 +1279,45 @@ function RipScoreCard({ packData }) {
         </div>
       </div>
 
-      {/* Value Summary */}
+      {/* Quick Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
         <div style={{ padding: 14, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, textAlign: "center" }}>
           <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>Pack Price</div>
           <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 700, color: C.text }}>${pack_price?.toFixed(2) || "?"}</div>
         </div>
         <div style={{ padding: 14, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, textAlign: "center" }}>
-          <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>Avg Pull Value</div>
-          <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 700, color: expected_value >= pack_price ? C.buy : C.pass }}>${expected_value?.toFixed(2) || "?"}</div>
+          <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>Best Pull</div>
+          <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 700, color: C.accent }}>${top_chase_value || (chase_cards?.[0]?.value) || "?"}</div>
         </div>
         <div style={{ padding: 14, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, textAlign: "center" }}>
-          <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>Hit Rate</div>
-          <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 700, color: C.accent }}>{hit_rate ? `${Math.round(hit_rate * 100)}%` : "?"}</div>
+          <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>Chase Cards</div>
+          <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 700, color: (chase_card_count || 0) >= 10 ? C.buy : (chase_card_count || 0) >= 5 ? C.accent : C.textDim }}>{chase_card_count || chase_cards?.length || "?"}</div>
         </div>
       </div>
+
+      {/* Chase Cards — the main event */}
+      {chase_cards?.length > 0 && (
+        <div style={{ padding: 16, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.accent}30`, marginBottom: 16 }}>
+          <div style={{ fontSize: 9, fontFamily: F.mono, color: C.accent, textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Top Pulls in This Set</div>
+          {chase_cards.map((card, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < chase_cards.length - 1 ? `1px solid ${C.border}` : "none" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 24, height: 24, borderRadius: 12, background: i === 0 ? `${C.accent}20` : C.bgSurface, border: `1px solid ${i === 0 ? C.accent + "40" : C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: i === 0 ? C.accent : C.textMuted, flexShrink: 0 }}>{i + 1}</div>
+                <div>
+                  <div style={{ fontSize: 14, color: C.text, fontWeight: 600 }}>{card.name}</div>
+                  {card.rarity && <div style={{ fontSize: 11, color: C.textMuted }}>{card.rarity}</div>}
+                </div>
+              </div>
+              <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: card.value >= 100 ? C.accent : C.textDim }}>${card.value}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Insight */}
       {insight && (
         <div style={{ padding: "12px 16px", background: C.bgCard, borderRadius: 8, border: `1px solid ${C.border}`, marginBottom: 16, textAlign: "center" }}>
-          <div style={{ fontSize: 14, color: C.text, lineHeight: 1.5, fontStyle: "italic" }}>{insight}</div>
-        </div>
-      )}
-
-      {/* Chase Cards */}
-      {chase_cards?.length > 0 && (
-        <div style={{ padding: 16, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 16 }}>
-          <div style={{ fontSize: 9, fontFamily: F.mono, color: C.accent, textTransform: "uppercase", letterSpacing: 2, marginBottom: 10 }}>Chase Highlights</div>
-          {chase_cards.map((card, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: i < chase_cards.length - 1 ? `1px solid ${C.border}` : "none" }}>
-              <div>
-                <div style={{ fontSize: 13, color: C.text, fontWeight: 600 }}>{card.name}</div>
-                {card.rarity && <div style={{ fontSize: 11, color: C.textMuted }}>{card.rarity}</div>}
-              </div>
-              <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 700, color: C.accent }}>${card.value}</div>
-            </div>
-          ))}
+          <div style={{ fontSize: 14, color: C.text, lineHeight: 1.5 }}>{insight}</div>
         </div>
       )}
 
@@ -1306,13 +1327,7 @@ function RipScoreCard({ packData }) {
         {market_trend && <div style={{ padding: "6px 14px", background: C.bgCard, borderRadius: 6, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 11, color: C.textMuted }}>Trend:</span><span style={{ fontSize: 12, fontWeight: 600, color: market_trend?.toLowerCase().includes("rising") ? C.success : market_trend?.toLowerCase().includes("declin") ? C.danger : C.accent }}>{market_trend?.toLowerCase().includes("rising") ? "📈" : market_trend?.toLowerCase().includes("declin") ? "📉" : "📊"} {market_trend}</span></div>}
       </div>
 
-      {/* Action Buttons */}
-      <div style={{ display: "flex", gap: 10 }}>
-        <div style={{ flex: 1, padding: "14px 20px", background: ripScore >= 6 ? `${C.buy}15` : `${C.pass}15`, borderRadius: 10, border: `1px solid ${ripScore >= 6 ? C.buy + "40" : C.pass + "40"}`, textAlign: "center" }}>
-          <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 700, color: ripScore >= 6 ? C.buy : C.pass }}>{ripScore >= 6 ? "Buy / Rip It" : "Pass"}</div>
-          <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>{ripScore >= 6 ? "Worth the gamble" : "Save your money"}</div>
-        </div>
-      </div>
+      {notes && <div style={{ fontSize: 12, color: C.textMuted, fontStyle: "italic", marginBottom: 16 }}>{notes}</div>}
     </div>
   );
 }
