@@ -4,13 +4,13 @@ import { useState, useRef, useCallback, useEffect } from "react";
 
 // ─── PROMPTS ───────────────────────────────────────────────
 // LIGHT prompt — quick ID + basic value estimate (1 API call, no web search)
-const LIGHT_PROMPT = (photoCount) => `Identify ${photoCount > 1 ? "these items" : "this item"} and estimate value.
+const LIGHT_PROMPT = (photoCount) => `Identify ${photoCount > 1 ? "these items" : "this item"}. Determine exactly what it is — do NOT estimate value.
 
 CLASSIFY first:
 - "Physical Object" — real 3D item
 - "Printed Media" — poster, print, photo, playmat
 - "Screen Capture" — photo of a screen (still ID the depicted item, lower confidence)
-- "Packaging Only" — sealed box/wrapper (value as sealed product)
+- "Packaging Only" — sealed box/wrapper
 
 RULES:
 - Be SPECIFIC: include model numbers, set names, card numbers, editions, SKUs
@@ -37,15 +37,10 @@ Respond ONLY with JSON (no markdown):
   "search_query": "Best search query for market value",
   "is_unique": false,
   "confidence_percent": 75,
-  "description": "2-3 sentences. ID, condition, notable features.",
-  "low_estimate": 20,
-  "high_estimate": 100,
-  "demand_level": "High|Medium|Low",
-  "sell_speed": "Fast|Moderate|Slow",
-  "market_trend": "Rising|Stable|Declining"
+  "description": "2-3 sentences. ID, condition, notable features. Do NOT include value estimates."
 }
 
-Numbers are plain numbers. confidence_percent is 0-100.`;
+confidence_percent is 0-100.`;
 
 
 
@@ -502,8 +497,8 @@ function getCollectionStats(items) {
   items.forEach(item => {
     const v = item.valuation;
     const a = item.analysis;
-    const low = parseDollar(v?.low_estimate ?? a?.low_estimate);
-    const high = parseDollar(v?.high_estimate ?? a?.high_estimate);
+    const low = parseDollar(v?.low_estimate);
+    const high = parseDollar(v?.high_estimate);
     if (low != null && high != null) {
       const avg = (low + high) / 2;
       totalValue += avg;
@@ -664,8 +659,8 @@ function DemandBadges({ demand, speed }) {
 
 function ResultCard({ item, compact, onClick }) {
   const hasDeep = !!item.valuation;
-  const lowVal = parseDollar(hasDeep ? item.valuation?.low_estimate : item.analysis?.low_estimate);
-  const highVal = parseDollar(hasDeep ? item.valuation?.high_estimate : item.analysis?.high_estimate);
+  const lowVal = hasDeep ? parseDollar(item.valuation?.low_estimate) : null;
+  const highVal = hasDeep ? parseDollar(item.valuation?.high_estimate) : null;
   const decision = hasDeep && item.askingPrice != null ? getDecision(item.askingPrice, lowVal, highVal) : null;
   const ds = decision ? decisionStyles[decision] : null;
   return (
@@ -674,13 +669,13 @@ function ResultCard({ item, compact, onClick }) {
         <div style={{ aspectRatio: "1", overflow: "hidden", background: C.bgSurface, position: "relative" }}>
           <img src={item.thumbnail} alt={item.analysis?.item_name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           {ds && <div style={{ position: "absolute", top: 8, right: 8, padding: "3px 10px", borderRadius: 6, background: "rgba(0,0,0,0.75)", color: ds.color, fontFamily: F.mono, fontSize: 11, fontWeight: 700 }}>{ds.icon} {ds.label}</div>}
-          {!hasDeep && <div style={{ position: "absolute", top: 8, right: 8, padding: "3px 10px", borderRadius: 6, background: "rgba(0,0,0,0.65)", color: C.textMuted, fontFamily: F.mono, fontSize: 9, fontWeight: 600 }}>Quick Scan</div>}
+          {!hasDeep && <div style={{ position: "absolute", top: 8, right: 8, padding: "3px 10px", borderRadius: 6, background: "rgba(0,0,0,0.65)", color: C.accent, fontFamily: F.mono, fontSize: 9, fontWeight: 600 }}>Tap for value</div>}
         </div>
       )}
       <div style={{ padding: 12 }}>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
           <span style={{ fontSize: 9, fontFamily: F.mono, padding: "2px 7px", borderRadius: 3, background: C.accentGlow, color: C.accent, border: `1px solid ${C.accentDim}40` }}>{item.analysis?.category}</span>
-          {lowVal != null && <span style={{ fontSize: 9, fontFamily: F.mono, padding: "2px 7px", borderRadius: 3, color: hasDeep ? C.success : C.textMuted, border: `1px solid ${hasDeep ? C.success : C.textMuted}40` }}>~${lowVal}–${highVal}{!hasDeep ? " est." : ""}</span>}
+          {hasDeep && lowVal != null && <span style={{ fontSize: 9, fontFamily: F.mono, padding: "2px 7px", borderRadius: 3, color: C.success, border: `1px solid ${C.success}40` }}>~${lowVal}–${highVal}</span>}
         </div>
         <h3 style={{ fontFamily: F.display, fontSize: 15, fontWeight: 600, color: C.text, margin: "0 0 4px", lineHeight: 1.25 }}>{item.analysis?.item_name}</h3>
         <p style={{ fontSize: 12, color: C.textMuted, margin: 0 }}>{item.analysis?.style_period} · {item.analysis?.estimated_era}</p>
@@ -772,32 +767,25 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
   const handleConfirm = () => { setShowConfirm(false); onLoadDeep(pendingExtras.current); };
   const handleCancelConfirm = () => { setShowConfirm(false); };
 
-  // Use deep values when available, fall back to quick estimate
-  const quickLow = parseDollar(a?.low_estimate);
-  const quickHigh = parseDollar(a?.high_estimate);
+  // Values ONLY from deep scan — quick scan no longer provides estimates
   const deepLow = parseDollar(v?.low_estimate);
   const deepHigh = parseDollar(v?.high_estimate);
-  const lowVal = hasDeep && deepLow != null ? deepLow : quickLow;
-  const highVal = hasDeep && deepHigh != null ? deepHigh : quickHigh;
+  const lowVal = deepLow;
+  const highVal = deepHigh;
 
   // Decision ONLY from deep data
   const decision = hasDeep && item.askingPrice != null ? getDecision(item.askingPrice, deepLow, deepHigh) : null;
   const confPercent = a?.confidence_percent || 60;
 
-  // Check if deep values differ significantly from quick
-  const hasDiscrepancy = hasDeep && quickLow != null && deepLow != null && (Math.abs(((quickLow + quickHigh) / 2) - ((deepLow + deepHigh) / 2)) > ((quickLow + quickHigh) / 2) * 0.25);
-
   const exportText = () => {
-    const useLow = hasDeep ? deepLow : quickLow;
-    const useHigh = hasDeep ? deepHigh : quickHigh;
-    let txt = `RELICID VALUE REPORT\n${"═".repeat(40)}\n`;
-    txt += hasDeep ? `Source: Deep Scan (live market data)\n` : `Source: Quick Scan (AI estimate — verify with Deep Scan)\n`;
+    let txt = `RELICID SCAN REPORT\n${"═".repeat(40)}\n`;
+    txt += hasDeep ? `Source: Deep Scan (live market data)\n` : `Source: Quick Scan (identification only)\n`;
     if (decision) txt += `VERDICT: ${decision}\n`;
-    if (hasDeep && item.askingPrice != null) txt += `Asking Price: $${item.askingPrice}\nFlip Potential: $${getFlipProfit(item.askingPrice, useLow, useHigh)}\n`;
+    if (hasDeep && item.askingPrice != null && deepLow != null) txt += `Asking Price: $${item.askingPrice}\nFlip Potential: $${getFlipProfit(item.askingPrice, deepLow, deepHigh)}\n`;
     txt += `\nItem: ${a?.item_name}\nCategory: ${a?.category}\nEra: ${a?.estimated_era}\nStyle: ${a?.style_period}\nOrigin: ${a?.likely_origin}\nMaker: ${a?.maker}\nMaterials: ${a?.materials?.join(", ")}\nConfidence: ${confPercent}%\n\n`;
     txt += `Description:\n${a?.description}\n\nKey Features:\n${a?.key_features?.map(f => `  • ${f}`).join("\n")}\n\nCondition:\n${a?.condition_notes}\n`;
-    if (useLow != null) {
-      txt += `\n${"─".repeat(40)}\nVALUATION${hasDeep ? " (Live Market)" : " (AI Estimate)"}\n\nValue: $${useLow} — $${useHigh}\n`;
+    if (hasDeep && deepLow != null) {
+      txt += `\n${"─".repeat(40)}\nVALUATION (Live Market)\n\nValue: $${deepLow} — $${deepHigh}\n`;
 
   const shareResult = async () => {
     try {
@@ -872,8 +860,8 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
       yPos += 50;
 
       // Value box
-      const useLow = hasDeep ? deepLow : quickLow;
-      const useHigh = hasDeep ? deepHigh : quickHigh;
+      const useLow = deepLow;
+      const useHigh = deepHigh;
       if (useLow != null && useHigh != null) {
         const avg = Math.round((useLow + useHigh) / 2);
         const boxW = 600, boxH = 140, boxX = (w - boxW) / 2;
@@ -884,7 +872,7 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
 
         ctx.fillStyle = "#6b6354";
         ctx.font = "16px monospace";
-        ctx.fillText(hasDeep ? "MARKET VALUE (LIVE DATA)" : "ESTIMATED VALUE", w / 2, yPos + 32);
+        ctx.fillText("MARKET VALUE", w / 2, yPos + 32);
 
         ctx.fillStyle = "#c9a555";
         ctx.font = "bold 56px Georgia, serif";
@@ -929,7 +917,7 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
       canvas.toBlob(async (blob) => {
         if (!blob) return;
         const file = new File([blob], "relicid-scan.png", { type: "image/png" });
-        const shareText = `${a?.item_name || "Check this out"} — worth $${lowVal}–$${highVal}${decision ? ` (${decision})` : ""}. Scanned with RelicID`;
+        const shareText = lowVal != null ? `${a?.item_name || "Check this out"} — worth $${lowVal}–$${highVal}${decision ? ` (${decision})` : ""}. Scanned with RelicID` : `${a?.item_name || "Check this out"} — identified with RelicID. Scan anything, see what it's worth.`;
 
         if (navigator.share && navigator.canShare?.({ files: [file] })) {
           try {
@@ -1026,8 +1014,8 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
     y += 60;
 
     // Value box
-    const useLow = hasDeep ? deepLow : quickLow;
-    const useHigh = hasDeep ? deepHigh : quickHigh;
+    const useLow = deepLow;
+    const useHigh = deepHigh;
     if (useLow != null && useHigh != null) {
       // Value background
       ctx.fillStyle = "rgba(201,165,85,0.08)";
@@ -1040,7 +1028,7 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
 
       ctx.fillStyle = "rgba(201,165,85,0.6)";
       ctx.font = "600 24px sans-serif";
-      ctx.fillText(hasDeep ? "MARKET VALUE (LIVE DATA)" : "ESTIMATED VALUE", w / 2, y + 40);
+      ctx.fillText("MARKET VALUE", w / 2, y + 40);
 
       ctx.fillStyle = "#c9a555";
       ctx.font = "bold 64px Georgia, serif";
@@ -1173,43 +1161,33 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
       <h2 style={{ fontFamily: F.display, fontSize: 26, fontWeight: 700, color: C.text, margin: "0 0 4px", lineHeight: 1.2 }}>{a?.item_name}</h2>
       <p style={{ fontSize: 14, color: C.textDim, margin: "0 0 20px" }}>{a?.style_period} · {a?.estimated_era} · {a?.likely_origin}</p>
 
-      {/* ═══ VALUE RANGE ═══ */}
-      {lowVal != null && highVal != null && (
-        <div style={{ background: C.bgCard, borderRadius: 10, border: `1px solid ${hasDeep ? C.success + "40" : C.border}`, padding: 20, marginBottom: 16, position: "relative" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <div style={{ fontSize: 9, fontFamily: F.mono, color: hasDeep ? C.success : C.textMuted, textTransform: "uppercase", letterSpacing: 3 }}>
-              {hasDeep ? "✓ Market Value (Live Data)" : "⚡ AI Estimate Only"}
-            </div>
-            {!hasDeep && <div style={{ fontSize: 9, fontFamily: F.mono, color: C.danger, padding: "2px 8px", borderRadius: 4, border: `1px solid ${C.danger}30`, background: `${C.danger}10` }}>May be inaccurate</div>}
+      {/* ═══ VALUE RANGE — Deep Scan only ═══ */}
+      {hasDeep && lowVal != null && highVal != null && (
+        <div style={{ background: C.bgCard, borderRadius: 10, border: `1px solid ${C.success}40`, padding: 20, marginBottom: 16, position: "relative" }}>
+          <div style={{ fontSize: 9, fontFamily: F.mono, color: C.success, textTransform: "uppercase", letterSpacing: 3, marginBottom: 14 }}>
+            ✓ Market Value (Live Data)
           </div>
 
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 8, opacity: hasDeep ? 1 : 0.65 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 8 }}>
             <div><div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted }}>LOW</div><div style={{ fontSize: 20, fontFamily: F.display, fontWeight: 700, color: C.textDim }}>${lowVal}</div></div>
-            <div style={{ textAlign: "center" }}><div style={{ fontSize: 9, fontFamily: F.mono, color: hasDeep ? C.accent : C.textMuted }}>AVG</div><div style={{ fontSize: 30, fontFamily: F.display, fontWeight: 700, color: hasDeep ? C.accent : C.textMuted }}>${Math.round((lowVal + highVal) / 2)}</div></div>
+            <div style={{ textAlign: "center" }}><div style={{ fontSize: 9, fontFamily: F.mono, color: C.accent }}>AVG</div><div style={{ fontSize: 30, fontFamily: F.display, fontWeight: 700, color: C.accent }}>${Math.round((lowVal + highVal) / 2)}</div></div>
             <div style={{ textAlign: "right" }}><div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted }}>HIGH</div><div style={{ fontSize: 20, fontFamily: F.display, fontWeight: 700, color: C.textDim }}>${highVal}</div></div>
           </div>
-          <div style={{ height: 5, background: C.bg, borderRadius: 3, position: "relative", overflow: "hidden", opacity: hasDeep ? 1 : 0.5 }}>
-            <div style={{ position: "absolute", left: "12%", right: "12%", top: 0, bottom: 0, background: hasDeep ? `linear-gradient(90deg, ${C.accentDim}, ${C.accent}, ${C.accentDim})` : `linear-gradient(90deg, ${C.textMuted}60, ${C.textMuted}, ${C.textMuted}60)`, borderRadius: 3 }} />
+          <div style={{ height: 5, background: C.bg, borderRadius: 3, position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", left: "12%", right: "12%", top: 0, bottom: 0, background: `linear-gradient(90deg, ${C.accentDim}, ${C.accent}, ${C.accentDim})`, borderRadius: 3 }} />
           </div>
-
-          {hasDiscrepancy && (
-            <div style={{ marginTop: 12, padding: "8px 12px", background: `${C.info}10`, borderRadius: 6, border: `1px solid ${C.info}30`, fontSize: 12, color: C.info }}>
-              📊 Updated with real market data — value differs from initial AI estimate
-            </div>
-          )}
         </div>
       )}
 
-      {/* ═══ DEEP SCAN CTA ═══ */}
+      {/* ═══ DEEP SCAN CTA — "What's it worth?" ═══ */}
       {!hasDeep && !deepLoading && !showCatPrompt && !showConfirm && (
         <div style={{ padding: 24, background: `linear-gradient(135deg, ${C.accentGlow}, ${C.bgCard})`, borderRadius: 12, border: `1px solid ${C.accent}40`, marginBottom: 20, textAlign: "center" }}>
-          <div style={{ fontSize: 20, marginBottom: 8 }}>🔬</div>
-          <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: C.accent, marginBottom: 6 }}>Get Real Market Value</div>
-          <div style={{ fontSize: 13, color: C.textDim, marginBottom: 14, lineHeight: 1.5 }}>
-            Searches real sold listings and live prices to give you an accurate valuation, BUY/PASS verdict, and flip profit calculation.
+          <div style={{ fontFamily: F.display, fontSize: 24, fontWeight: 700, color: C.accent, marginBottom: 6 }}>What's it worth?</div>
+          <div style={{ fontSize: 14, color: C.textDim, marginBottom: 16, lineHeight: 1.5 }}>
+            Run a Deep Scan to get real market value from sold listings, a BUY/PASS verdict, and flip profit calculation.
           </div>
-          <button onClick={handleDeepClick} style={{ padding: "12px 36px", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", borderRadius: 8, cursor: "pointer", fontFamily: F.display, fontSize: 16, fontWeight: 600, letterSpacing: 0.5 }}>
-            {deepScansRemaining > 0 ? "Run Deep Scan" : "Get Deep Scans"}
+          <button onClick={handleDeepClick} style={{ padding: "14px 40px", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", borderRadius: 8, cursor: "pointer", fontFamily: F.display, fontSize: 17, fontWeight: 600, letterSpacing: 0.5 }}>
+            {deepScansRemaining > 0 ? "Get Market Value" : "Get Deep Scans"}
           </button>
           <div style={{ marginTop: 10 }}>
             <CreditBadge remaining={deepScansRemaining} onClick={onShowPaywall} />
@@ -1793,8 +1771,6 @@ export default function RelicID() {
         style_period: result.style_period, likely_origin: result.likely_origin, maker: result.maker,
         materials: result.materials, condition_notes: result.condition_notes, key_features: result.key_features,
         confidence_percent: result.confidence_percent, description: result.description,
-        low_estimate: result.low_estimate, high_estimate: result.high_estimate,
-        demand_level: result.demand_level, sell_speed: result.sell_speed, market_trend: result.market_trend,
         condition_grade: result.condition_grade, search_query: result.search_query,
         object_type: result.object_type || "Physical Object",
         object_type_confidence: result.object_type_confidence || "Medium",
