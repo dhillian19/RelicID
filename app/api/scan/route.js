@@ -18,12 +18,23 @@ export async function POST(request) {
       },
       body: JSON.stringify({
         model: body.model || "claude-sonnet-4-20250514",
-        max_tokens: body.max_tokens || 1500,
+        max_tokens: Math.min(body.max_tokens || 1000, 1000),
         messages: body.messages,
       }),
     });
 
     const data = await res.json();
+
+    // ─── COST LOGGING ─────────────────────────────────
+    if (data.usage) {
+      const input = data.usage.input_tokens || 0;
+      const output = data.usage.output_tokens || 0;
+      const inputCost = (input / 1000000) * 3;
+      const outputCost = (output / 1000000) * 15;
+      const totalCost = inputCost + outputCost;
+      console.log(`[RelicID Quick Scan] Tokens: ${input} in / ${output} out | Cost: $${totalCost.toFixed(4)}`);
+    }
+
     return Response.json(data);
   } catch (err) {
     console.error("[RelicID API] Scan error:", err);
