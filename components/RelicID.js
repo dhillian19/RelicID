@@ -56,7 +56,14 @@ const DEEP_PROMPT = (info, userExtras) => {
     ? `\nUser details: ${trigger.deepInstructions(userExtras)}`
     : "";
 
-  return `Search for recent SOLD prices for this ${info.is_unique ? "type of item" : "item"}.
+  // Category-specific pricing rules (minimal tokens, big accuracy impact)
+  const catRules = {
+    "Trading Cards": "\n- IMPORTANT: Use TCGPlayer current MARKET PRICE as primary valuation — it is the industry standard for card pricing. eBay sold is secondary. If TCGPlayer market price is significantly higher than eBay sold, use TCGPlayer. Do NOT average them down. Report the TCGPlayer market price in recent_sales. Never mix graded with raw prices.",
+    "Sneakers/Footwear": "\n- Check StockX and GOAT current prices as primary sources. eBay sold is secondary.",
+    "Clothing/Accessories": "\n- Check Poshmark, Depop, and eBay sold. For designer items, check TheRealReal and Vestiaire.",
+  }[info.category] || "";
+
+  return `Search for real market prices for this ${info.is_unique ? "type of item" : "item"}.
 
 Item: ${info.item_name}
 Category: ${info.category}
@@ -64,11 +71,10 @@ Condition: ${info.condition_notes || "Unknown"}${info.condition_grade ? ` (${inf
 ${info.search_query ? `Search: ${info.search_query}` : ""}${extrasText}
 
 RULES:
-- Search SOLD listings, not active. Sold = real data.
-- Match condition. Don't mix graded with raw prices.
-- For trading cards: check TCGPlayer AND eBay sold. Report both.
+- Search SOLD listings and current market prices. Prioritize the most accurate source for this category.
+- Match condition. Don't mix graded with raw prices.${catRules}
 - For unique/handmade: search comparable pieces by medium + subject.
-- Only report sales you actually found.
+- Only report data you actually found.
 
 JSON only (no markdown):
 {
