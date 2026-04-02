@@ -798,6 +798,156 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
     txt += `Description:\n${a?.description}\n\nKey Features:\n${a?.key_features?.map(f => `  • ${f}`).join("\n")}\n\nCondition:\n${a?.condition_notes}\n`;
     if (useLow != null) {
       txt += `\n${"─".repeat(40)}\nVALUATION${hasDeep ? " (Live Market)" : " (AI Estimate)"}\n\nValue: $${useLow} — $${useHigh}\n`;
+
+  const shareResult = async () => {
+    try {
+      const canvas = document.createElement("canvas");
+      const w = 1080, h = 1350;
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d");
+
+      // Background
+      ctx.fillStyle = "#0f0e0b";
+      ctx.fillRect(0, 0, w, h);
+
+      // Gold accent bar at top
+      const grad = ctx.createLinearGradient(0, 0, w, 0);
+      grad.addColorStop(0, "#c9a555"); grad.addColorStop(1, "#8b7234");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, 6);
+
+      // Item photo
+      const photoUrl = item.thumbnail || item.photos?.[0]?.dataUrl;
+      if (photoUrl) {
+        await new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            const imgSize = 500;
+            const x = (w - imgSize) / 2, y = 60;
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(x, y, imgSize, imgSize, 16);
+            ctx.clip();
+            const scale = Math.max(imgSize / img.width, imgSize / img.height);
+            const sw = img.width * scale, sh = img.height * scale;
+            ctx.drawImage(img, x - (sw - imgSize) / 2, y - (sh - imgSize) / 2, sw, sh);
+            ctx.restore();
+            // Border
+            ctx.strokeStyle = "#302b22";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(x, y, imgSize, imgSize, 16);
+            ctx.stroke();
+            resolve();
+          };
+          img.onerror = resolve;
+          img.src = photoUrl;
+        });
+      }
+
+      let yPos = photoUrl ? 600 : 100;
+
+      // Item name
+      ctx.fillStyle = "#ece4d4";
+      ctx.font = "bold 44px Georgia, serif";
+      ctx.textAlign = "center";
+      const name = a?.item_name || "Unknown Item";
+      // Word wrap
+      const words = name.split(" ");
+      let line = "";
+      const lines = [];
+      for (const word of words) {
+        const test = line + (line ? " " : "") + word;
+        if (ctx.measureText(test).width > w - 120) { lines.push(line); line = word; }
+        else line = test;
+      }
+      if (line) lines.push(line);
+      lines.forEach((l, i) => { ctx.fillText(l, w / 2, yPos + i * 52); });
+      yPos += lines.length * 52 + 20;
+
+      // Category + era
+      ctx.fillStyle = "#6b6354";
+      ctx.font = "20px sans-serif";
+      ctx.fillText(`${a?.category || ""} · ${a?.estimated_era || ""}`, w / 2, yPos);
+      yPos += 50;
+
+      // Value box
+      const useLow = hasDeep ? deepLow : quickLow;
+      const useHigh = hasDeep ? deepHigh : quickHigh;
+      if (useLow != null && useHigh != null) {
+        const avg = Math.round((useLow + useHigh) / 2);
+        const boxW = 600, boxH = 140, boxX = (w - boxW) / 2;
+        ctx.fillStyle = "#1a1814";
+        ctx.beginPath(); ctx.roundRect(boxX, yPos, boxW, boxH, 12); ctx.fill();
+        ctx.strokeStyle = "#c9a55540"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.roundRect(boxX, yPos, boxW, boxH, 12); ctx.stroke();
+
+        ctx.fillStyle = "#6b6354";
+        ctx.font = "16px monospace";
+        ctx.fillText(hasDeep ? "MARKET VALUE (LIVE DATA)" : "ESTIMATED VALUE", w / 2, yPos + 32);
+
+        ctx.fillStyle = "#c9a555";
+        ctx.font = "bold 56px Georgia, serif";
+        ctx.fillText(`$${avg}`, w / 2, yPos + 92);
+
+        ctx.fillStyle = "#a89e8c";
+        ctx.font = "18px sans-serif";
+        ctx.fillText(`$${useLow} — $${useHigh}`, w / 2, yPos + 122);
+        yPos += boxH + 30;
+      }
+
+      // Verdict
+      if (decision) {
+        const ds = decisionStyles[decision];
+        ctx.fillStyle = ds?.color || "#c9a555";
+        ctx.font = "bold 48px Georgia, serif";
+        ctx.fillText(decision, w / 2, yPos);
+        yPos += 40;
+        if (item.askingPrice != null && useLow != null) {
+          const profit = getFlipProfit(item.askingPrice, useLow, useHigh);
+          ctx.fillStyle = "#a89e8c";
+          ctx.font = "22px sans-serif";
+          ctx.fillText(profit > 0 ? `Flip potential: +$${profit}` : `Asking: $${item.askingPrice}`, w / 2, yPos);
+          yPos += 30;
+        }
+        yPos += 20;
+      }
+
+      // Branding
+      ctx.fillStyle = "#302b22";
+      ctx.fillRect(0, h - 80, w, 80);
+      const brandGrad = ctx.createLinearGradient(0, 0, w, 0);
+      brandGrad.addColorStop(0, "#c9a555"); brandGrad.addColorStop(1, "#e8d5a0");
+      ctx.fillStyle = brandGrad;
+      ctx.font = "bold 28px Georgia, serif";
+      ctx.fillText("RelicID", w / 2 - 80, h - 35);
+      ctx.fillStyle = "#6b6354";
+      ctx.font = "18px sans-serif";
+      ctx.fillText("· getrelicid.com", w / 2 + 60, h - 35);
+
+      // Convert to blob and share
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], "relicid-scan.png", { type: "image/png" });
+        const shareText = `${a?.item_name || "Check this out"} — worth $${lowVal}–$${highVal}${decision ? ` (${decision})` : ""}. Scanned with RelicID`;
+
+        if (navigator.share && navigator.canShare?.({ files: [file] })) {
+          try {
+            await navigator.share({ files: [file], text: shareText, url: "https://getrelicid.com" });
+          } catch (e) { if (e.name !== "AbortError") console.error("Share failed:", e); }
+        } else {
+          // Fallback: download
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url; link.download = "relicid-scan.png";
+          link.click();
+          URL.revokeObjectURL(url);
+        }
+      }, "image/png");
+    } catch (e) {
+      console.error("Share error:", e);
+    }
+  };
       if (v?.recent_sales?.length) txt += `\nRecent Sales:\n${v.recent_sales.map(s => {
         if (typeof s === "string") return `  • ${s}`;
         return `  • ${s.price || "?"} on ${s.platform || "Unknown"} (${s.date || "Recently"}) — ${s.description || "Similar item"}`;
@@ -811,6 +961,164 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
     link.download = `relicid-${a?.item_name?.replace(/\s+/g, "-").toLowerCase() || "report"}.txt`;
     link.click(); URL.revokeObjectURL(url);
   };
+
+  const shareResult = async () => {
+    const canvas = document.createElement("canvas");
+    const w = 1080, h = 1350; // 4:5 ratio — works on Instagram, TikTok, stories
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+
+    // Background
+    ctx.fillStyle = "#0f0e0b";
+    ctx.fillRect(0, 0, w, h);
+
+    // Subtle accent glow at top
+    const glow = ctx.createRadialGradient(w / 2, 0, 0, w / 2, 0, 500);
+    glow.addColorStop(0, "rgba(201,165,85,0.12)");
+    glow.addColorStop(1, "transparent");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, w, 500);
+
+    // Item thumbnail (if available)
+    let thumbY = 80;
+    if (item.thumbnail) {
+      try {
+        const img = await new Promise((resolve, reject) => {
+          const i = new Image();
+          i.onload = () => resolve(i);
+          i.onerror = reject;
+          i.src = item.thumbnail;
+        });
+        const thumbSize = 320;
+        const tx = (w - thumbSize) / 2;
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(tx, thumbY, thumbSize, thumbSize, 16);
+        ctx.clip();
+        const scale = Math.max(thumbSize / img.width, thumbSize / img.height);
+        const sw = img.width * scale, sh = img.height * scale;
+        ctx.drawImage(img, tx - (sw - thumbSize) / 2, thumbY - (sh - thumbSize) / 2, sw, sh);
+        ctx.restore();
+        // Border
+        ctx.strokeStyle = "rgba(201,165,85,0.3)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(tx, thumbY, thumbSize, thumbSize, 16);
+        ctx.stroke();
+        thumbY += thumbSize + 40;
+      } catch { thumbY += 20; }
+    }
+
+    // Item name
+    ctx.fillStyle = "#ece4d4";
+    ctx.font = "bold 48px Georgia, serif";
+    ctx.textAlign = "center";
+    const nameLines = wrapText(ctx, a?.item_name || "Unknown Item", w - 120);
+    nameLines.forEach((line, i) => {
+      ctx.fillText(line, w / 2, thumbY + (i * 56));
+    });
+    let y = thumbY + (nameLines.length * 56) + 20;
+
+    // Category + era
+    ctx.fillStyle = "#6b6354";
+    ctx.font = "400 28px sans-serif";
+    ctx.fillText(`${a?.category || ""} · ${a?.estimated_era || ""}`, w / 2, y);
+    y += 60;
+
+    // Value box
+    const useLow = hasDeep ? deepLow : quickLow;
+    const useHigh = hasDeep ? deepHigh : quickHigh;
+    if (useLow != null && useHigh != null) {
+      // Value background
+      ctx.fillStyle = "rgba(201,165,85,0.08)";
+      ctx.beginPath();
+      ctx.roundRect(60, y, w - 120, 160, 16);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(201,165,85,0.25)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(201,165,85,0.6)";
+      ctx.font = "600 24px sans-serif";
+      ctx.fillText(hasDeep ? "MARKET VALUE (LIVE DATA)" : "ESTIMATED VALUE", w / 2, y + 40);
+
+      ctx.fillStyle = "#c9a555";
+      ctx.font = "bold 64px Georgia, serif";
+      const avg = Math.round((useLow + useHigh) / 2);
+      ctx.fillText(`$${avg}`, w / 2, y + 110);
+
+      ctx.fillStyle = "#6b6354";
+      ctx.font = "400 26px sans-serif";
+      ctx.fillText(`$${useLow} — $${useHigh}`, w / 2, y + 145);
+      y += 200;
+    }
+
+    // Verdict (if available)
+    if (decision) {
+      const ds = decisionStyles[decision];
+      ctx.fillStyle = ds?.color || "#c9a555";
+      ctx.font = "bold 44px Georgia, serif";
+      ctx.fillText(`${ds?.icon || ""} ${decision}`, w / 2, y + 10);
+      y += 60;
+    }
+
+    // Flip profit
+    if (item.askingPrice != null && useLow != null && useHigh != null) {
+      const profit = getFlipProfit(item.askingPrice, useLow, useHigh);
+      if (profit != null) {
+        ctx.fillStyle = profit > 0 ? "#4ade80" : "#ef4444";
+        ctx.font = "600 32px sans-serif";
+        ctx.fillText(`${profit > 0 ? "+" : ""}$${profit} flip potential`, w / 2, y + 10);
+        y += 50;
+      }
+    }
+
+    // Watermark
+    ctx.fillStyle = "rgba(201,165,85,0.4)";
+    ctx.font = "600 30px Georgia, serif";
+    ctx.fillText("RelicID", w / 2, h - 80);
+    ctx.fillStyle = "#6b6354";
+    ctx.font = "400 22px sans-serif";
+    ctx.fillText("Scan anything. See what it's worth.", w / 2, h - 45);
+
+    // Convert and share
+    canvas.toBlob(async (blob) => {
+      const file = new File([blob], "relicid-scan.png", { type: "image/png" });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({
+            title: `${a?.item_name} — RelicID`,
+            text: `Check out what RelicID found: ${a?.item_name}${useLow ? ` valued at $${useLow}–$${useHigh}` : ""}`,
+            files: [file],
+          });
+        } catch (e) { if (e.name !== "AbortError") console.error("Share failed:", e); }
+      } else {
+        // Fallback: download the image
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `relicid-${a?.item_name?.replace(/\s+/g, "-").toLowerCase() || "scan"}.png`;
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+    }, "image/png");
+  };
+
+  // Helper: wrap text to fit canvas width
+  function wrapText(ctx, text, maxWidth) {
+    const words = text.split(" ");
+    const lines = [];
+    let current = "";
+    for (const word of words) {
+      const test = current ? current + " " + word : word;
+      if (ctx.measureText(test).width > maxWidth && current) {
+        lines.push(current);
+        current = word;
+      } else { current = test; }
+    }
+    if (current) lines.push(current);
+    return lines.length > 3 ? lines.slice(0, 3).map((l, i) => i === 2 ? l.slice(0, -3) + "..." : l) : lines;
+  }
 
   return (
     <div>
@@ -1095,13 +1403,14 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
 
       {/* ═══ ACTION BUTTONS ═══ */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <button onClick={shareResult} style={{ flex: 1, padding: "12px 20px", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", borderRadius: 8, cursor: "pointer", fontFamily: F.body, fontSize: 13, fontWeight: 600 }}>Share</button>
         {hasDeep && a?.item_name && (
-          <a href={buildEbayListingUrl(a.item_name)} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: "12px 20px", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDim})`, color: C.bg, border: "none", borderRadius: 8, cursor: "pointer", fontFamily: F.body, fontSize: 13, fontWeight: 600, textDecoration: "none", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          <a href={buildEbayListingUrl(a.item_name)} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: "12px 20px", background: C.bgCard, color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 8, cursor: "pointer", fontFamily: F.body, fontSize: 13, fontWeight: 600, textDecoration: "none", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
             List on eBay
           </a>
         )}
-        <button onClick={exportText} style={{ flex: 1, padding: "12px 20px", background: C.bgCard, color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 8, cursor: "pointer", fontFamily: F.body, fontSize: 13, fontWeight: 600 }}>📄 Export Report</button>
-        <button onClick={onDelete} style={{ padding: "12px 20px", background: C.bgCard, color: C.danger, border: `1px solid ${C.danger}50`, borderRadius: 8, cursor: "pointer", fontFamily: F.body, fontSize: 13, fontWeight: 600 }}>🗑️ Delete</button>
+        <button onClick={exportText} style={{ padding: "12px 20px", background: C.bgCard, color: C.textDim, border: `1px solid ${C.border}`, borderRadius: 8, cursor: "pointer", fontFamily: F.body, fontSize: 13, fontWeight: 600 }}>Export</button>
+        <button onClick={onDelete} style={{ padding: "12px 20px", background: C.bgCard, color: C.danger, border: `1px solid ${C.danger}50`, borderRadius: 8, cursor: "pointer", fontFamily: F.body, fontSize: 13, fontWeight: 600 }}>Delete</button>
       </div>
     </div>
   );
