@@ -17,7 +17,7 @@ export async function POST(request) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: body.model || "claude-sonnet-4-20250514",
+        model: "claude-haiku-4-5-20241022",
         max_tokens: Math.min(body.max_tokens || 2048, 2048),
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: body.messages,
@@ -26,16 +26,16 @@ export async function POST(request) {
 
     const data = await res.json();
 
-    // ─── COST LOGGING ─────────────────────────────────
+    // ─── COST LOGGING (Haiku pricing: $0.25/M in, $1.25/M out) ───
     if (data.usage) {
       const input = data.usage.input_tokens || 0;
       const output = data.usage.output_tokens || 0;
       const searchCount = (data.content || []).filter(b => b.type === "web_search_tool_result").length;
-      const inputCost = (input / 1000000) * 3;
-      const outputCost = (output / 1000000) * 15;
+      const inputCost = (input / 1000000) * 0.25;
+      const outputCost = (output / 1000000) * 1.25;
       const searchCost = searchCount * 0.01;
       const totalCost = inputCost + outputCost + searchCost;
-      console.log(`[RelicID Deep Scan] Tokens: ${input} in / ${output} out | Searches: ${searchCount} | Cost: $${totalCost.toFixed(4)} (input: $${inputCost.toFixed(4)}, output: $${outputCost.toFixed(4)}, search: $${searchCost.toFixed(4)})`);
+      console.log(`[RelicID Deep Scan] Model: haiku | Tokens: ${input} in / ${output} out | Searches: ${searchCount} | Cost: $${totalCost.toFixed(4)} (input: $${inputCost.toFixed(4)}, output: $${outputCost.toFixed(4)}, search: $${searchCost.toFixed(4)})`);
     }
 
     return Response.json(data);
