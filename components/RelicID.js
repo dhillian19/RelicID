@@ -71,6 +71,7 @@ Condition: ${info.condition_notes || "Unknown"}${info.condition_grade ? ` (${inf
 ${info.search_query ? `Search: ${info.search_query}` : ""}${extrasText}
 
 RULES:
+- Use a MAXIMUM of 3 web searches. Be strategic — one targeted search is better than five broad ones.
 - Search SOLD listings and current market prices. Prioritize the most accurate source for this category.
 - Match condition. Don't mix graded with raw prices.${catRules}
 - For unique/handmade: search comparable pieces by medium + subject.
