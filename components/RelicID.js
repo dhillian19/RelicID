@@ -4,591 +4,87 @@ import { useState, useRef, useCallback, useEffect } from "react";
 
 // ─── PROMPTS ───────────────────────────────────────────────
 // LIGHT prompt — quick ID + basic value estimate (1 API call, no web search)
-const LIGHT_PROMPT = (photoCount) => `You are an expert product identifier and valuation specialist. Your job is to identify ${photoCount > 1 ? "these items" : "this item"}, determine what it is, and estimate value — but ONLY after classifying what you're actually looking at.
+const LIGHT_PROMPT = (photoCount) => `Identify ${photoCount > 1 ? "these items" : "this item"} and estimate value.
 
-═══ STEP 1: CLASSIFY WHAT YOU SEE ═══
-Before identifying anything, determine the OBJECT TYPE:
+CLASSIFY first:
+- "Physical Object" — real 3D item
+- "Printed Media" — poster, print, photo, playmat
+- "Screen Capture" — photo of a screen (still ID the depicted item, lower confidence)
+- "Packaging Only" — sealed box/wrapper (value as sealed product)
 
-• "Physical Object" — a real 3D item (toy, shoe, card, tool, device, clothing, etc.)
-• "Printed Media" — a poster, art print, playmat, book cover, photograph of a flat printed item
-• "Screen Capture" — a photo of a phone screen, monitor, TV, or digital display
-• "Packaging Only" — just a box, wrapper, or container with no visible item inside
-
-Use these signals:
-FLAT / PRINTED indicators: uniform flat surface, consistent lighting across entire image, no true depth separation, printed textures or pixelation, visible paper/canvas edges, perspective distortion consistent with a flat plane.
-REAL 3D OBJECT indicators: visible depth and layering, shadows cast between objects, irregular lighting, perspective changes, physical wear patterns (not printed wear).
-SCREEN indicators: visible pixels, screen glare, device bezels, backlit glow, moire patterns.
-
-If you are NOT confident about the object type, say so. "Appears to be" and "may be" are always better than a wrong confident call.
-
-═══ STEP 2: IDENTIFY & VALUE (conditional) ═══
-Your behavior depends on the object type:
-
-IF Physical Object → proceed with full identification. Be as specific as possible:
-- For trading cards: Follow this strict visual identification process — DO NOT guess set names. Read what you can physically see on the card.
-
-  ═══ POKEMON CARDS ═══
-  STEP 1 — SET SYMBOL: Look bottom-right of the artwork box. Describe the exact shape you see.
-    • No symbol = Base Set (1999), Jungle, or Fossil — distinguish by card back color and border style
-    • Pokeball = Base Set 2
-    • Leaf = Jungle
-    • Skull = Fossil
-    • Wave = Team Rocket
-    • Sun = Neo Genesis | Snowflake = Neo Discovery | Net = Neo Revelation | Crystal = Neo Destiny
-    • Circle/star/diamond near card number = modern era (2003+) — read the printed set name
-    • Sword/Shield symbol = Sword & Shield era (2020-2022)
-    • Star burst = Scarlet & Violet era (2023+)
-  STEP 2 — EDITION STAMP: Look bottom-left of artwork box. "Edition 1" stamp in a black circle = 1st Edition (extremely valuable). No stamp = Unlimited.
-  STEP 3 — CARD NUMBER: Read "XX/YYY" printed at bottom. The total (YYY) helps confirm the set.
-    • /102 = Base Set | /64 = Jungle | /62 = Fossil | /130 = Base Set 2
-    • /111 = Neo Genesis | /75 = Neo Discovery | /64 = Neo Revelation | /105 = Neo Destiny
-  STEP 4 — HOLO STATUS: Does the artwork have a rainbow/sparkle texture? Holo = significantly more valuable.
-  STEP 5 — LANGUAGE: Check for non-English text. Japanese cards have different backs and higher value for certain sets.
-  STEP 6 — GRADING SLAB: Is the card in a hard plastic case? Read the label — PSA/BGS/CGC grade number.
-  IF you cannot read the set symbol clearly, list the top 2-3 possibilities based on card number and say what the user should check.
-
-  ═══ MAGIC: THE GATHERING (MTG) CARDS ═══
-  STEP 1 — EXPANSION SYMBOL: Center-right of the card, between artwork and text box. Describe the shape.
-  STEP 2 — RARITY: Color of the expansion symbol. Black = Common, Silver = Uncommon, Gold = Rare, Red/Orange = Mythic Rare.
-  STEP 3 — SET NAME: Often printed at the bottom of the card near the collector number (e.g. "M21", "MH2", "DMU").
-  STEP 4 — COLLECTOR NUMBER: Bottom-left format "XXX/YYY". Use this to confirm set size.
-  STEP 5 — FOIL STATUS: Does the card have a holographic shimmer across the entire card? Foil = more valuable.
-  STEP 6 — FRAME ERA: Pre-2003 cards have a different frame style (no bottom text box separator). Post-2015 have a new font. This helps date unknown cards.
-  STEP 7 — SPECIAL TREATMENTS: Look for alternate art, borderless, showcase, extended art, or retro frame indicators — these are premium variants worth significantly more.
-
-  ═══ SPORTS CARDS (Baseball, Basketball, Football, Hockey) ═══
-  STEP 1 — BRAND & YEAR: Read the brand name printed on the card (Topps, Panini, Upper Deck, Bowman, Fleer, Donruss, Score, etc.) and the year if printed.
-  STEP 2 — SET NAME: Read any series/product name printed (e.g. "Topps Chrome", "Panini Prizm", "Bowman Draft", "Stadium Club").
-  STEP 3 — PLAYER NAME: Read the printed name exactly.
-  STEP 4 — CARD NUMBER: Read the collector number (often bottom corner or back of card).
-  STEP 5 — ROOKIE CARD: Look for "RC", "Rookie", or a rookie logo. Rookie cards are significantly more valuable.
-  STEP 6 — PARALLEL/REFRACTOR: Does the card have a colored border, shimmer, or different finish than a base card? Prizm, Refractor, Chrome, Color parallel variants are worth far more than base. Read any color designation printed on the card.
-  STEP 7 — AUTOGRAPH/PATCH: Is there a real signature on the card? A jersey/relic piece embedded? These are premium inserts.
-  STEP 8 — PRINT RUN: Look for "/XX" numbering (e.g. "/25", "/10", "/1"). Numbered cards are significantly more valuable.
-  STEP 9 — VINTAGE: Pre-1980 cards have distinct visual styles. Look for tobacco card texture, pre-war printing patterns.
-
-  ═══ OTHER TCG (Yu-Gi-Oh, Dragon Ball Super, One Piece, Flesh & Blood, etc.) ═══
-  STEP 1 — GAME IDENTITY: Read the game name printed on the card back or border.
-  STEP 2 — SET CODE: Read the alphanumeric code printed near the card number (e.g. "LOB-001" for Legend of Blue Eyes White Dragon).
-  STEP 3 — RARITY: Read the rarity designation printed on the card (Common, Rare, Super Rare, Ultra Rare, Secret Rare, etc.).
-  STEP 4 — EDITION: First Edition, Unlimited, or Limited Edition markings.
-  STEP 5 — LANGUAGE: Non-English TCG cards (Japanese, Korean, Chinese) often have premium value for certain games.
-
-  FOR ALL CARDS: Never fabricate a set name you cannot confirm visually. If the set symbol is unclear or cut off, say so and list possibilities. Always note if the card is raw/ungraded or in a grading slab.
-- For branded items: brand, exact model/product name, colorway, size if visible, release year
-
-- For sneakers/footwear: Follow this strict visual identification process — DO NOT guess colorway names. Read what you can physically see.
-
-  ═══ SNEAKERS / FOOTWEAR ═══
-  STEP 1 — BRAND: Read the brand logo or name on the shoe (Nike swoosh, Adidas three stripes, Jordan Jumpman, New Balance "N", Yeezy, etc.).
-  STEP 2 — MODEL NAME: Read any text on the tongue tag, heel tab, or insole. Common formats: "Air Jordan 1 Retro High OG", "Yeezy Boost 350 V2", "Nike Dunk Low".
-  STEP 3 — COLORWAY: Describe the EXACT colors you see physically — upper color, midsole color, outsole color, lace color. Do NOT name a colorway you cannot confirm. Wrong colorway = completely wrong value.
-  STEP 4 — SIZE: Read the size printed on the tongue tag or insole if visible. Size dramatically affects resale value.
-  STEP 5 — CONDITION: Look for creasing in the toe box, sole yellowing, heel tab wear, lace condition, midsole scuffs. Be specific about what you see.
-  STEP 6 — BOX: Is the original box present? Read the box label — it will have exact colorway name, size, style code, and retail price.
-  STEP 7 — DEADSTOCK/WORN: Are the shoes unworn (clean soles, no creasing, factory laces)? Deadstock = significantly higher value.
-  STEP 8 — STYLE CODE: Look for a 6-digit Nike style code or similar on the box or tag (e.g. "555088-101"). This is the most accurate identifier.
-  STEP 9 — COLLAB/SPECIAL: Look for collaboration text (Travis Scott, Off-White, Fragment, Supreme, etc.) or special edition indicators on tongue, heel, or box.
-  FOR ALL SNEAKERS: Never name a specific colorway (Chicago, Bred, Panda, etc.) unless you can confirm it from the box label or visible text. Describe colors physically seen instead.
-
-- For vintage/antiques/collectibles: Follow this strict visual identification process — DO NOT guess maker names. Read what you can physically see.
-
-  ═══ VINTAGE / ANTIQUES / COLLECTIBLES ═══
-  STEP 1 — MAKER MARKS: Look on the bottom, back, or underside of the item. Describe exactly what you see — any stamps, impressed marks, painted marks, paper labels, or stickers.
-    • Pottery/Ceramics: Look for impressed or painted marks on the base. Common marks: Roseville (raised "Roseville USA" + shape number), McCoy (raised "McCoy"), Hull (raised "Hull USA"), Fiesta (Homer Laughlin mark), Royal Doulton (lion + crown mark).
-    • Silver/Metals: Look for hallmarks — British hallmarks (lion passant, date letter, assay office mark), American sterling (.925 or "Sterling"), European marks (800, 830, 925).
-    • Glass: Look for pontil marks, mold seams, embossed text on the base.
-    • Furniture: Look for paper labels, stamps, or branded marks on the back, bottom, or inside drawers.
-  STEP 2 — CONSTRUCTION DETAILS: These date the item precisely.
-    • Hand-painted vs transfer print (transfer prints have fine dot patterns under magnification)
-    • Hand-thrown vs mold-made pottery (hand-thrown has slight irregularities)
-    • Dovetail joints in furniture (hand-cut = pre-1860, machine-cut = post-1860)
-    • Type of glass (leaded, pressed, blown, Depression glass color)
-  STEP 3 — PATTERN/DESIGN NAME: Describe the exact pattern you see. For pottery: raised relief design subject (pinecone, water lily, apple blossom). For china: pattern name often printed with maker mark.
-  STEP 4 — SHAPE/FORM NUMBER: Many pottery makers stamped shape numbers (e.g. Roseville "712-10" = Pinecone vase, 10 inches). Read any numbers visible near the maker mark.
-  STEP 5 — CONDITION SPECIFICS: Look for chips (especially on rims and bases), crazing (fine crack network in glaze), hairline cracks, repairs, fading, restoration. Describe only what you can clearly see.
-  STEP 6 — SIZE INDICATORS: Use contextual clues (hands, table, nearby objects) to estimate dimensions.
-  FOR ALL ANTIQUES: If maker mark is unclear or absent, say "Unconfirmed maker — possible: [X, Y, Z] based on style." Never invent a maker name.
-
-  ═══ MILITARY ANTIQUES (uniforms, headgear, weapons, insignia, medals, equipment) ═══
-  Military antiques are a specialized high-value niche. Provenance, branch, regiment, and era determine value more than condition alone. Follow this protocol:
-
-  STEP 1 — BRANCH IDENTIFICATION: Identify the military branch from visible insignia, colors, and design.
-    • US Army: Eagle insignia, branch-specific colors (Infantry blue, Artillery red, Cavalry yellow)
-    • US Navy/Marine Corps: Anchor motifs, USMC eagle-globe-anchor
-    • Confederate: CS or CSA markings, Southern Cross, state seals
-    • Foreign Military: Look for national emblems, language text, foreign maker marks
-    • Fraternal/Ceremonial: Masonic, Knights Templar, GAR (Grand Army of the Republic) — these are common and often mistaken for true military
-
-  STEP 2 — REGIMENT/UNIT BADGE: The badge or plate is the most critical value factor.
-    • Read any text, numbers, or symbols on the badge exactly
-    • State militia badges (e.g. "1st Regt. Mass. Vol. Militia") vs generic federal issue
-    • Rare regiment badges command 5-10x premium over generic examples
-    • Shell badges (scallop shell shape) are common on 19th century dress hats — identify the specific regiment or branch shown
-
-  STEP 3 — ERA DATING: Military items date precisely by design changes.
-    • Pre-Civil War (pre-1861): Bicorn/chapeau style, early eagle designs
-    • Civil War era (1861-1865): Kepi style dominant, branch color welting
-    • Indian Wars / Gilded Age (1866-1898): Dress helmet with spike, forage cap
-    • Spanish-American War era (1898-1910): Campaign hat introduced
-    • WWI (1917-1918): Doughboy helmet, olive drab
-    • WWII and later: M1 helmet, modern insignia
-
-  STEP 4 — MAKER MARK: Read any interior label, stamp, or tag.
-    • Bent & Bush (Boston, 1841-1933): Major US military hatter, supplied Army/Navy/USMC
-    • Horstmann Bros (Philadelphia): Major Civil War era military goods supplier
-    • Tiffany & Co: Made high-end officer dress items
-    • Foreign makers: Gieve & Sons (British Navy), etc.
-
-  STEP 5 — CONDITION SPECIFICS FOR MILITARY ITEMS:
-    • Plume/feather condition (fragile, often damaged or replaced)
-    • Badge/plate: original vs replacement, gilding intact
-    • Chinstrap: original leather vs replacement
-    • Interior lining: intact vs deteriorated
-    • Moth damage to wool or fur elements
-
-  STEP 6 — PROVENANCE FLAGS: These dramatically increase value:
-    • Named to a specific officer (label with officer name = significant premium)
-    • Original carrying case/box present
-    • Documentation, letters, or photographs with the item
-    • Known regimental history
-
-  STEP 7 — FRATERNAL VS TRUE MILITARY: Many 19th century fraternal organizations (Masons, Knights Templar, GAR, Odd Fellows) used military-style dress that looks identical to real military items. These are common and worth significantly less than authentic military.
-    • Knights Templar cross = fraternal, not military
-    • GAR badge = veteran's organization, not combat military
-    • True military items have branch-specific regimental markings
-
-  VALUATION GUIDANCE FOR MILITARY ANTIQUES:
-    • Generic dress hat, no provenance: $75-200
-    • Named to officer or rare regiment: $300-1,000+
-    • Civil War Confederate items: 3-5x Union equivalent
-    • Complete with original case and documentation: 2-3x base value
-    • Fraternal items (Masonic, KT): 50-70% of true military value
-    • Foreign military (British, French, German): specialist market, value varies widely
-
-  FOR ALL MILITARY ANTIQUES: Always identify whether an item is true military, fraternal/ceremonial, or reproduction. Never assume high value without visible regiment/provenance markers. The shell badge identification is critical — describe exactly what is depicted on any badge or plate visible.
-
-- For jewelry/gemstones: Follow this strict visual identification process — jewelry value depends heavily on metal, stones, and maker marks.
-
-  ═══ JEWELRY / GEMSTONES ═══
-  STEP 1 — METAL IDENTIFICATION: Look for hallmarks stamped inside rings, on clasps, or on the back of pendants.
-    • Gold hallmarks: 10K (41.7% gold), 14K (58.3% gold), 18K (75% gold), 22K (91.7% gold), 24K (pure gold)
-    • Gold color: Yellow gold, white gold (often rhodium plated), rose/pink gold
-    • Platinum: PT950, PT900, PLAT, or PLATINUM stamp — heavier than gold, stays white
-    • Silver: 925, STERLING, .925, 800 (European), or no mark (plated/costume)
-    • Gold filled/plated: GF, GP, RGP, 1/20 14K GF — worth only melt value of base metal
-    • If no hallmark visible, note that metal cannot be confirmed from photos
-  STEP 2 — DESIGNER/MAKER MARKS: Read any stamps, engravings, or signatures carefully.
-    • Tiffany & Co: "TIFFANY & CO" + "925" or "750" stamp — extremely valuable
-    • Cartier: "CARTIER" stamp, often with serial number
-    • David Yurman: "DY" stamp + "925" silver
-    • Pandora: "ALE" stamp + "925"
-    • Vintage costume: Weiss, Eisenberg, Miriam Haskell, Schiaparelli — collectible
-    • If designer mark visible, note it exactly as it appears
-  STEP 3 — STONE IDENTIFICATION (visual only — cannot confirm from photos alone):
-    • Diamonds: Look for brilliance/fire (rainbow light dispersion), sharp facet edges, clarity
-    • Rubies: Deep red, often included
-    • Sapphires: Blue most common, also pink, yellow, white
-    • Emeralds: Green, typically included/fracture filled
-    • Pearls: Natural luster, slightly irregular shape = natural/cultured; perfect round = likely synthetic
-    • Turquoise, coral, amber, jade: Describe color and pattern exactly
-    • Crystal/rhinestone: High sparkle but no fire — likely costume
-    • CRITICAL: Never state a stone is a genuine diamond, ruby, sapphire, etc. without qualification. Always say "appears to be" and note that gemstone identification requires professional testing.
-  STEP 4 — SETTING STYLE: Identifies era and value tier.
-    • Solitaire: Single center stone — most classic, value depends entirely on stone
-    • Halo: Center stone surrounded by smaller stones — popular 2010s+
-    • Pavé/Micro-pavé: Surface covered in tiny stones — labor intensive, higher value
-    • Channel set: Stones set in a channel — modern and Art Deco
-    • Prong set: Raised prongs holding stone — classic, exposes maximum light
-    • Bezel set: Metal surrounds stone completely — modern and secure
-  STEP 5 — ERA/STYLE IDENTIFICATION:
-    • Georgian (pre-1830): Closed back settings, foil backing, rose cut stones
-    • Victorian (1837-1901): Yellow gold, mourning jewelry (jet, hair), seed pearls
-    • Edwardian (1901-1915): Platinum/white gold, filigree, milgrain, old European cut diamonds
-    • Art Deco (1920-1940): Geometric, white metals, calibré cut colored stones, emerald cuts
-    • Mid-Century Modern (1940-1960): Bold forms, yellow gold, large cocktail rings
-    • Contemporary (1980+): White gold/platinum, princess cut, channel settings
-  STEP 6 — CONDITION:
-    • Prong wear (worn prongs = stone at risk of loss)
-    • Missing stones (look for empty settings)
-    • Clasp function (broken clasps reduce value)
-    • Plating wear (exposing base metal on costume pieces)
-  VALUATION GUIDANCE:
-    • Costume/fashion jewelry: $5-50 unless signed designer
-    • Signed vintage costume (Weiss, Eisenberg, etc.): $25-300
-    • Sterling silver unmarked: Melt value + 20-50% for craftsmanship
-    • 14K gold (no stones): Near melt value — calculate from visible weight estimate
-    • Diamond rings: Value almost entirely depends on stone — ALWAYS recommend professional appraisal for any piece appearing to have diamonds over 0.5ct
-    • Designer pieces (Tiffany, Cartier): 3-10x comparable non-designer
-  FOR ALL JEWELRY: Always recommend professional appraisal for any item that appears to have genuine gemstones or precious metals. Never give a confident high valuation without noting this caveat. A $5 thrift store find could be worth $5,000 or $5 — photos alone cannot determine this for jewelry.
-
-- For antique furniture: Follow this strict visual identification process — furniture value depends on construction, period, and maker.
-
-  ═══ ANTIQUE FURNITURE ═══
-  STEP 1 — CONSTRUCTION METHOD: The single most important dating indicator.
-    • Hand-cut dovetails (irregular, slightly uneven spacing) = pre-1860, hand made
-    • Machine-cut dovetails (perfectly uniform spacing) = post-1860
-    • Mortise and tenon joints = traditional construction, pre-20th century
-    • Wooden pegs/pins instead of screws = pre-1850
-    • Square/cut nails = pre-1890 | Wire/round nails = post-1890 | Phillips screws = post-1930
-    • Plywood/particleboard = post-1900/modern — significantly reduces antique value
-  STEP 2 — STYLE PERIOD: Identify the furniture style from visible design elements.
-    • William & Mary (1690-1730): Trumpet legs, bun feet, high relief carving
-    • Queen Anne (1730-1760): Cabriole legs, pad feet, shell carvings, graceful curves
-    • Chippendale (1755-1790): Ball-and-claw feet, Gothic/Chinese influences, elaborate carving
-    • Hepplewhite (1785-1800): Shield back chairs, tapered legs, inlay decoration
-    • Sheraton (1790-1810): Rectangular forms, reeded legs, satinwood inlay
-    • Empire/American Empire (1810-1840): Heavy forms, animal feet (paw, lion), dark veneers
-    • Victorian (1840-1900): Heavily carved, dark woods, marble tops, ornate hardware
-    • Arts & Crafts/Mission (1880-1920): Simple rectilinear, quarter-sawn oak, exposed joinery
-    • Art Nouveau (1890-1910): Organic flowing lines, nature motifs
-    • Art Deco (1920-1940): Geometric, exotic veneers, chrome hardware
-  STEP 3 — WOOD IDENTIFICATION: Describe the grain and color you see.
-    • Mahogany: Reddish-brown, straight grain, favored in 18th-19th century American/English
-    • Walnut: Dark brown, open grain, American furniture staple
-    • Cherry: Warm reddish tone, fine grain, New England favorite
-    • Oak: Pronounced grain, quarter-sawn shows ray fleck pattern
-    • Rosewood: Very dark, exotic, Victorian and Empire periods
-    • Painted/decorated: Pennsylvania Dutch, country furniture — desirable if original paint
-  STEP 4 — MAKER MARKS: Look on the back, underside, inside drawers, or bottom of case pieces.
-    • Paper labels (fragile, often missing): Identify specific cabinetmakers
-    • Stenciled marks: Common on Empire period pieces
-    • Branded marks: Burns into wood, used by some workshops
-    • Hardware: Bail pulls, Hepplewhite oval brasses, Chippendale willow brasses help date pieces
-  STEP 5 — CONDITION FACTORS:
-    • Original finish vs refinished (refinished pieces worth 40-60% of original finish value)
-    • Original hardware vs replacement
-    • Repairs, patches, or replaced elements
-    • Veneer lifting or missing
-    • Structural integrity (wobbly joints, broken elements)
-  STEP 6 — REGIONAL IDENTIFICATION:
-    • New England: Maple, birch, cherry, restrained decoration
-    • Philadelphia: Elaborate Chippendale, finest American carving
-    • Newport RI: Block front case pieces, shell carving
-    • Southern: Yellow pine secondary wood, simpler forms
-    • Country/Rural: Simplified versions of formal styles, mixed woods
-  VALUATION GUIDANCE FOR FURNITURE:
-    • Reproduction/Victorian era mass produced: $50-500
-    • Genuine period piece, refinished: $300-2,000
-    • Genuine period piece, original finish: $500-10,000+
-    • Signed/attributed to known maker: 3-10x base value
-    • Philadelphia Chippendale, Newport block front: Museum quality, $10,000-100,000+
-  FOR ALL FURNITURE: Always check for plywood or particleboard (modern reproduction indicator). Original finish and original hardware are the two biggest value multipliers. Regional attribution requires expert examination — note possibilities rather than firm attribution.
-
-- For Hot Wheels and die-cast vehicles: Follow this strict visual identification process — condition and specific casting are everything.
-
-  ═══ HOT WHEELS / DIE-CAST VEHICLES ═══
-  STEP 1 — BRAND IDENTIFICATION: Read the brand name on the base of the car.
-    • Hot Wheels (Mattel): "HOT WHEELS" + "MATTEL" on base — most collected brand
-    • Matchbox: "MATCHBOX" on base — separate collectible market from Hot Wheels
-    • Johnny Lightning: "JOHNNY LIGHTNING" on base
-    • Greenlight, M2, Auto World: Modern premium die-cast, different collector market
-    • Corgi, Dinky (vintage): British brands, strong collector market
-  STEP 2 — BASE READING: The base of the car contains critical identification info.
-    • Country of manufacture: "MADE IN MALAYSIA", "MADE IN HONG KONG", "MADE IN USA"
-    • Hong Kong base = pre-1983, often more valuable
-    • Malaysia base = 1983+
-    • USA base = very early Hot Wheels (1968-1977), highest value
-    • Copyright year: Read the year stamped on the base
-    • Casting name: The model name is often stamped on the base
-  STEP 3 — REDLINE IDENTIFICATION (most valuable Hot Wheels):
-    • Redline era = 1968-1977
-    • Look for red stripe/line on the tire sidewall
-    • USA or Hong Kong base
-    • Spectraflame paint (deep, candy-like metallic finish — not flat or standard metallic)
-    • "Sweet 16" original castings: Custom Camaro, Custom Mustang, Custom Firebird, Deora, Python, etc.
-    • Redlines in good condition: $20-500+ depending on color and casting
-    • Rare colors (antifreeze, magenta, olive): 5-10x common colors
-  STEP 4 — TREASURE HUNT / SUPER TREASURE HUNT:
-    • Regular Treasure Hunt (TH): Flame logo on car + "TH" on card — $5-15
-    • Super Treasure Hunt (STH): Spectraflame paint + Real Rider rubber tires + "TH" logo — $20-150
-    • Look for rubber tires (not plastic) — key STH indicator
-    • Spectraflame paint vs standard metallic paint
-  STEP 5 — CONDITION GRADING (critical for Hot Wheels value):
-    • Mint on Card (MOC): Still in original blister pack, never opened — highest value
-    • Near Mint on Card: Card has minor wear, car untouched
-    • Very Good Loose: No chips, wheels spin freely, no rust
-    • Good Loose: Minor paint chips, wheels functional
-    • Play Worn: Significant chips, worn paint, bent parts — low value
-    • NEVER assume good condition — look carefully for paint chips on edges and high points
-  STEP 6 — RARE CASTINGS AND VARIATIONS:
-    • Color variations: Same casting in different colors have wildly different values
-    • Error cars: Missing tampos, wrong wheels, color errors — premium collectibles
-    • Convention exclusives, employee cars: Extremely rare, $100-1000+
-    • First editions: First year a casting was produced
-    • Real Riders: Rubber tires on later models — premium over plastic wheel versions
-  STEP 7 — CASE FRESH VS PLAYED WITH:
-    • Unopened case fresh cars look different from played-with cars
-    • Factory paint has a different sheen than weathered paint
-    • Axle condition: Bent axles indicate play use
-  VALUATION GUIDANCE:
-    • Modern mainline loose: $0.50-2
-    • Modern mainline MOC: $1-5
-    • Treasure Hunt loose: $5-15
-    • Super Treasure Hunt loose: $20-100
-    • Super Treasure Hunt MOC: $50-300
-    • Redline era loose good condition: $20-200
-    • Redline era Spectraflame mint: $100-500+
-    • Rare color Redline: $500-5,000+
-    • Error cars: $50-500 depending on error type
-  FOR ALL HOT WHEELS: The base reading is mandatory — never value a Hot Wheels without identifying the country of manufacture and copyright year. Condition is everything — a mint Redline is worth 10x a played worn example of the same casting.
-
-- For electronics/tech: Follow this strict visual identification process — read model numbers directly, do not guess.
-
-  ═══ ELECTRONICS / TECH ═══
-  STEP 1 — MODEL NUMBER: Look for a label on the back, bottom, or side of the device. Read the exact model number printed.
-    • iPhones: Back says "iPhone [model]" — also look for the A-series chip number (A2111, etc.) which confirms exact variant
-    • iPads: Back label has model number (e.g. "A2197")
-    • MacBooks: Bottom label has model identifier and serial number
-    • Samsung: Back label or Settings > About shows exact model (e.g. "SM-S918U")
-    • Consoles: Bottom/back label — PS5 "CFI-1215A" (disc) vs "CFI-1215B" (digital)
-    • Laptops: Bottom label always has model number
-  STEP 2 — STORAGE/CAPACITY: Read from the device label, Settings screen if visible, or box.
-  STEP 3 — COLOR/FINISH: Describe the exact color you see. Do not assume colorway names without visible confirmation.
-  STEP 4 — GENERATION/YEAR: Read the model number and use it to confirm the exact generation. Do NOT guess generation from appearance alone — many generations look identical.
-  STEP 5 — CONDITION: Look for screen cracks, back glass cracks, dents, scratches on metal edges, button wear. Describe only what you can clearly see.
-  STEP 6 — ACCESSORIES: Note presence of original box, charger, cables, documentation — these add value.
-  STEP 7 — CARRIER LOCK: If visible on screen or box, note carrier (AT&T, Verizon, etc.) vs unlocked — affects value.
-  FOR ALL ELECTRONICS: The exact model number is everything. A wrong model number means a completely wrong valuation. If the label is not visible, say so and list the most likely models based on visual appearance.
-
-- For clothing/apparel/streetwear: Follow this strict visual identification process — read tags directly, do not guess.
-
-  ═══ CLOTHING / APPAREL / STREETWEAR ═══
-  STEP 1 — BRAND TAG: Read the main brand tag inside the collar or waistband. Read the exact text — brand name, sub-line, collection name.
-  STEP 2 — CARE/SIZE TAG: Read the sewn-in care tag. It typically shows: size, fabric composition, country of manufacture, and sometimes a style/item number.
-  STEP 3 — STYLE/ITEM NUMBER: Some tags include a style code or SKU. Read it exactly — this is the most accurate identifier.
-  STEP 4 — SEASON/YEAR: Some brands print season (SS22, FW23, etc.) on tags. Supreme, Palace, and other streetwear brands date items this way.
-  STEP 5 — COLORWAY: Describe the exact colors visible. Do not name a colorway without tag confirmation.
-  STEP 6 — CONDITION: Look for pilling, fading (especially underarms and collar), stains, holes, missing buttons, broken zippers. Describe only what you can clearly see.
-  STEP 7 — TAGS ATTACHED: Are hang tags still attached? "New with tags" = significantly higher resale value.
-  STEP 8 — AUTHENTICATION INDICATORS: For designer/luxury items — look for serial number tags, authenticity cards, hologram stickers, and stitching quality. Mismatched fonts or poor stitching = potential fake.
-  STEP 9 — STREETWEAR SPECIFICS: For Supreme, Palace, Bape, Off-White, etc. — read the box logo, tag text, and any printed graphics exactly. Season and colorway determine value entirely.
-  FOR ALL CLOTHING: Never assume a garment is authentic designer without visible tag confirmation. If tags are not visible, note that authentication cannot be confirmed from photos.
-
-- For vintage/older items: maker marks, stamps, signatures, patent numbers
-- For condition: note whether graded/slabbed or raw/ungraded/loose — this dramatically affects value
-- For HANDMADE / CUSTOM / ONE-OF-A-KIND items (cross-stitch, paintings, custom builds, hand-sewn, woodwork, pottery without maker marks, fan art, custom jewelry, etc.): these will NOT have exact matches on the market. Instead:
-  • Identify the MEDIUM (cross-stitch, oil painting, woodworking, etc.)
-  • Estimate SIZE if possible from context clues
-  • Identify the SUBJECT MATTER (video game, sports, portrait, etc.)
-  • Note the level of DETAIL and CRAFTSMANSHIP
-  • Set is_unique to true
-  • Build search_query around COMPARABLE pieces, not exact matches (e.g. "large completed cross stitch video game pixel art sold" or "handmade WWF wrestling wall art sold")
-
-IF Printed Media → describe what is depicted, identify the type (poster, art print, playmat, promotional material), note any value it may have as printed media. Do NOT treat it as the physical item it depicts.
-
-IF Screen Capture → note this is a photo of a screen, BUT still identify and value the item SHOWN on the screen as if you were looking at the real thing. Users often screenshot marketplace listings or social media posts to check value before buying. Identify the depicted item as specifically as possible, estimate its value, but set confidence_percent lower (40-60) since you can't verify condition or authenticity from a screenshot. Add a note in object_type_note explaining what detail is lost (e.g. "Cannot assess true condition, color accuracy, or authenticity from a screenshot").
-
-IF Packaging Only → identify the product from the packaging, but note that the actual item is not visible. Value should reflect "sealed/boxed" pricing if applicable, or note that contents cannot be verified.
-
-SPECIAL CASE — BOOSTER PACKS / SEALED PACKS:
-If the item is a sealed trading card booster pack, booster box, blister pack, ETB, or any sealed trading card product (Pokémon, MTG, Yu-Gi-Oh, sports cards, etc.):
-- Set is_booster_pack to true
-- Identify the EXACT set name (e.g. "Scarlet & Violet — Prismatic Evolutions", "2024 Topps Series 1")
-- Identify the product type (single booster, 3-pack blister, ETB, booster box, etc.)
-- Set category to "Trading Cards"
-- For low_estimate/high_estimate: use the SEALED pack retail/market price, NOT the value of individual cards inside
-- The Deep Scan will handle the rip-or-keep analysis
-
-CRITICAL RULES:
-- Your #1 job is PRECISE IDENTIFICATION. Find the EXACT product: model number, set name, card number, edition, version, SKU, ISBN, year of release.
-- Only name a specific pattern, motif, or symbol if you are 100% certain. If there is ANY doubt, describe what you physically see instead.
-- NEVER speculate about religious motifs or culturally sensitive imagery.
-- Be honest about what you CAN'T determine. "Cannot confirm from photos" is better than a wrong guess.
-- CONDITION: Only describe damage or flaws you can clearly see in the photo. If the item looks clean and undamaged, say so. Do NOT invent or assume flaws (scratches, fading, wear) to sound thorough — fabricating condition issues causes wrong valuations.
-- VARIANTS: When two or more versions are visually indistinguishable (e.g. Base Set vs Base Set 2, Switch vs Switch OLED, 1st Edition vs Unlimited), do NOT guess. Name both possibilities in item_name (e.g. "Venusaur Base Set 15/102 OR Base Set 2 18/130") and explain in description exactly what physical detail the user should check to tell them apart.
+RULES:
+- Be SPECIFIC: include model numbers, set names, card numbers, editions, SKUs
+- CONDITION: Only note flaws clearly visible. If item looks clean, say so. Do NOT invent damage.
+- VARIANTS: If versions are visually identical (Base Set vs Base Set 2, Switch vs Switch OLED), name BOTH and explain how to tell them apart.
+- For unique/handmade items: set is_unique true, describe medium + subject + size
 ${photoCount > 1 ? "- Consider ALL photos together." : ""}
 
-Respond ONLY with this JSON (no markdown, no backticks):
+Respond ONLY with JSON (no markdown):
 {
-  "object_type": "One of: Physical Object, Printed Media, Screen Capture, Packaging Only",
-  "object_type_confidence": "High, Medium, or Low",
-  "object_type_note": "Brief explanation if confidence is not High, or if there's ambiguity. null if straightforward.",
-  "item_name": "Most specific name possible. For cards: 'Venusaur 15/102 Base Set Unlimited Holo'. For shoes: 'Nike Air Jordan 1 Retro High OG Chicago 2015'. For vintage items: 'Roseville Pottery Pinecone Vase 712-10 Brown'. For printed media: 'Poster depicting [subject]'. For screen captures: name the DEPICTED ITEM, not the screenshot itself (e.g. 'WWF Wrestling Challenge Arcade Cabinet' not 'Screenshot of WWF game'). Always include identifying numbers/editions when visible.",
-  "category": "One of: Furniture, Pottery/Porcelain, Glassware, Coins/Currency, Jewelry/Metals, Toys/Games, Art/Prints, Textiles, Books/Ephemera, Tools/Instruments, Clothing/Accessories, Electronics, Trading Cards, Sneakers/Footwear, Gaming/Consoles, Video Games, Vehicles, Other",
-  "estimated_era": "Date range or specific year",
-  "style_period": "Style, period, set name, or product line",
-  "likely_origin": "Country or region",
-  "maker": "Brand or maker. Only name specific maker if confirmed by visible marks. Otherwise: 'Unconfirmed — possible: [X, Y, Z].'",
+  "object_type": "Physical Object|Printed Media|Screen Capture|Packaging Only",
+  "object_type_confidence": "High|Medium|Low",
+  "object_type_note": null,
+  "item_name": "Most specific name possible",
+  "category": "Furniture|Pottery/Porcelain|Glassware|Coins/Currency|Jewelry/Metals|Toys/Games|Art/Prints|Textiles|Books/Ephemera|Tools/Instruments|Clothing/Accessories|Electronics|Trading Cards|Sneakers/Footwear|Gaming/Consoles|Video Games|Vehicles|Other",
+  "estimated_era": "Date range or year",
+  "style_period": "Style or product line",
+  "likely_origin": "Country",
+  "maker": "Brand/maker if confirmed",
   "materials": ["materials"],
-  "condition_notes": "Observable condition. State if graded/slabbed or raw/ungraded. Note specific flaws only if clearly visible in the photo. If item appears clean and undamaged, say so.",
-  "condition_grade": "One of: Mint, Near Mint, Excellent, Very Good, Good, Fair, Poor — or 'Graded [grade]' if in a grading slab. null if not a physical object.",
-  "key_features": ["Specific identifying details you can see — card numbers, set symbols, edition stamps, maker marks, model numbers, serial numbers, signatures, tags, labels"],
-  "search_query": "The most effective search query to find this item's market value. For mass-produced items: be specific with brand, model, set, number, edition. For handmade/unique items: search for COMPARABLE pieces by medium + subject + size (e.g. 'large completed cross stitch pixel art video game sold' or 'handmade wrestling fan art framed sold'). For printed media: search for the print/poster specifically.",
+  "condition_notes": "Visible condition only",
+  "condition_grade": "Mint|Near Mint|Excellent|Very Good|Good|Fair|Poor",
+  "key_features": ["visible identifying details"],
+  "search_query": "Best search query for market value",
   "is_unique": false,
-  "is_booster_pack": false,
   "confidence_percent": 75,
-  "description": "2-3 sentence summary. Lead with object type if it's NOT a straightforward physical object. Then the specific identification, condition, and notable features. If multiple variants are possible, explain exactly what to look for to tell them apart.",
+  "description": "2-3 sentences. ID, condition, notable features.",
   "low_estimate": 20,
   "high_estimate": 100,
-  "demand_level": "High, Medium, or Low",
-  "sell_speed": "Fast, Moderate, or Slow",
-  "market_trend": "Rising, Stable, or Declining"
+  "demand_level": "High|Medium|Low",
+  "sell_speed": "Fast|Moderate|Slow",
+  "market_trend": "Rising|Stable|Declining"
 }
 
-IMPORTANT: low_estimate and high_estimate are plain numbers. confidence_percent is a number 0-100. For screen captures, estimate the value of the DEPICTED ITEM but use a wider range to reflect uncertainty. Be as specific as humanly possible in item_name and search_query — vague descriptions produce bad valuations.`;
+Numbers are plain numbers. confidence_percent is 0-100.`;
 
-// DEEP prompt — full valuation with web search (expensive, only on demand)
+
+
+// DEEP prompt — web search valuation (on demand, costs 1 credit)
 const DEEP_PROMPT = (info, userExtras) => {
   const trigger = CATEGORY_TRIGGERS[info.category];
   const extrasText = trigger && userExtras && Object.keys(userExtras).some(k => userExtras[k])
-    ? `\n\nUSER-PROVIDED DETAILS:\n${trigger.deepInstructions(userExtras)}\nUse these details to narrow your search and improve accuracy.`
-    : trigger ? `\n\nUSER-PROVIDED DETAILS:\n${trigger.deepInstructions({})}\n${trigger.missingNote}` : "";
+    ? `\nUser details: ${trigger.deepInstructions(userExtras)}`
+    : "";
 
-  return `You are a market valuation researcher. Search for recent SOLD prices and current listings for this ${info.is_unique ? "type of item" : "specific item"}.
+  return `Search for recent SOLD prices for this ${info.is_unique ? "type of item" : "item"}.
 
 Item: ${info.item_name}
-Object Type: ${info.object_type || "Physical Object"}
-${info.is_unique ? "⚠️ UNIQUE / HANDMADE ITEM — no exact match will exist. Search for COMPARABLE pieces.\n" : ""}Era: ${info.estimated_era}
-Style/Set: ${info.style_period}
-Origin: ${info.likely_origin}
-Maker/Brand: ${info.maker}
 Category: ${info.category}
-Condition: ${info.condition_notes || "Unknown"}
-${info.condition_grade ? `Condition Grade: ${info.condition_grade}` : ""}
-${info.search_query ? `Suggested Search: ${info.search_query}` : ""}${extrasText}
+Condition: ${info.condition_notes || "Unknown"}${info.condition_grade ? ` (${info.condition_grade})` : ""}
+${info.search_query ? `Search: ${info.search_query}` : ""}${extrasText}
 
-CRITICAL SEARCH RULES:
-1. Use the Suggested Search query as your starting point. If it's specific (includes model numbers, set names, card numbers), search for that EXACT item.
-2. Search for SOLD/COMPLETED listings, not just active listings. Sold prices are real market data. Active listings are just asking prices.
-3. Match the item's condition when pulling comps. If the item is raw/ungraded, prioritize raw/ungraded sold prices. Do NOT mix graded prices (PSA 8, BGS 9, etc.) with raw prices — they are completely different markets.
-4. For each sale you report, include the platform, approximate date, and a brief description. Do NOT include URLs — they will be auto-generated from the item's search query.
-5. If you find conflicting prices, weight recent sold prices over active listings, and condition-matched comps over mismatched ones.
-6. If the Object Type is "Printed Media", search for the print/poster/media itself — NOT the physical item it depicts. A poster of a toy is worth poster prices, not toy prices.
-7. If the Object Type is "Packaging Only", search for sealed/boxed pricing if applicable, and note that contents cannot be verified.
-8. If the Object Type is "Screen Capture", search for the DEPICTED ITEM as if it were a physical object. The user is checking value before buying. Note in your response that condition cannot be confirmed from a screenshot.
-9. FOR UNIQUE / HANDMADE ITEMS: There will be NO exact match. Do NOT give up or return empty results. Instead:
-   a. Search for comparable pieces by MEDIUM (e.g. "completed cross stitch", "handmade oil painting", "custom woodwork")
-   b. Add the SUBJECT MATTER to narrow results (e.g. "video game cross stitch", "wrestling fan art")
-   c. Factor in SIZE — larger handmade pieces command higher prices
-   d. Factor in DETAIL LEVEL — highly detailed work with many colors/stitches is worth more
-   e. Search Etsy, eBay, and craft marketplaces for comparable sold pieces
-   f. Try multiple searches: one for the medium + subject, one for the medium + size, one broader if needed
-   g. In recent_sales, label comps clearly as "Comparable piece" not "Same item"
-   h. In notes, explain how you arrived at the estimate since there's no exact match
-10. FOR TRADING CARDS (Pokemon, MTG, Sports Cards, Yu-Gi-Oh, etc.): Cards have multiple distinct marketplaces that price very differently. You MUST search ALL of these:
-   a. TCGPlayer — the most accurate marketplace for Pokemon, MTG, and other TCG cards. Search for the EXACT card name, set, and condition. TCGPlayer prices are the industry standard for raw ungraded cards. Note the market price, low price, and median price.
-   b. eBay SOLD listings — filter by completed/sold. Search raw/ungraded separately from graded (PSA/BGS/CGC). eBay raw prices are often LOWER than TCGPlayer — do not use eBay as the sole source.
-   c. For sports cards — also check PWCC, Goldin, and eBay sold. Graded and raw are completely separate markets.
-   d. NEVER average eBay raw prices with graded prices. Report them separately.
-   e. SPECIAL VARIANTS: Always check if the card has known variants (holo swirl patterns, shadowless, error cards, 1st Edition) that command significant premium. A "swirl" holo pattern on vintage Pokemon cards can be worth 2-5x a non-swirl copy.
-   f. PRICE RECONCILIATION: If TCGPlayer shows significantly higher prices than eBay sold, report BOTH and explain the difference. Do not just use the lower number. The true market value is the price a willing buyer pays — use the higher of the two if both are legitimate sold comps.
-   g. CONDITION TIERS for cards: Damaged/HP ($X) → MP ($X) → LP ($X) → Good ($X) → VG ($X) → NM ($X) → Mint ($X). Report the range that matches the item's actual condition.
-   h. For the low_estimate use the lowest recent sold comp matching the condition. For high_estimate use the highest recent sold comp matching the condition. Do NOT cap the estimate just because eBay raw prices are low if TCGPlayer shows higher.
+RULES:
+- Search SOLD listings, not active. Sold = real data.
+- Match condition. Don't mix graded with raw prices.
+- For trading cards: check TCGPlayer AND eBay sold. Report both.
+- For unique/handmade: search comparable pieces by medium + subject.
+- Only report sales you actually found.
 
-Respond ONLY with this JSON (no markdown, no backticks):
+JSON only (no markdown):
 {
   "low_estimate": 25,
   "high_estimate": 150,
-  "recent_sales": [
-    {"price": "$45", "platform": "eBay", "date": "Mar 15, 2026", "description": "Raw/ungraded, similar condition"},
-    {"price": "$60", "platform": "TCGPlayer", "date": "Mar 10, 2026", "description": "Near Mint raw listing"}
-  ],
-  "graded_highlight": {
-    "grade": "PSA 10",
-    "price": "$1200",
-    "platform": "eBay",
-    "date": "Feb 2026",
-    "note": "Requires near-perfect condition and professional grading"
-  },
-  "demand_level": "High",
-  "sell_speed": "Fast",
-  "value_factors": ["Factor 1", "Factor 2"],
-  "market_trend": "Stable",
-  "where_to_sell": ["eBay", "TCGPlayer"],
-  "notes": "Any important caveats about condition, grading, edition, or market volatility"
-}
-
-CRITICAL RULES FOR THIS JSON:
-- recent_sales must ONLY contain raw/ungraded sales. NEVER include PSA, BGS, CGC, or any graded sale in recent_sales. Graded sales skew the raw value and confuse users.
-- graded_highlight is OPTIONAL. Only include it if you found a real graded sale for a top grade (PSA 9, PSA 10, BGS 9.5, etc.). If no graded data exists or the item is not the type that gets graded, set graded_highlight to null.
-- graded_highlight should show the HIGHEST known graded sale you found — the jackpot scenario.
-- low_estimate and high_estimate must reflect RAW/UNGRADED value only at the item's actual condition.
-- Only include sales/listings you actually found — never invent data.`;
+  "recent_sales": [{"price": "$45", "platform": "eBay", "date": "Mar 2026", "description": "Brief desc"}],
+  "graded_highlight": null,
+  "demand_level": "High|Medium|Low",
+  "sell_speed": "Fast|Moderate|Slow",
+  "value_factors": ["factor1", "factor2"],
+  "market_trend": "Rising|Stable|Declining",
+  "where_to_sell": ["Platform1", "Platform2"],
+  "notes": "Brief caveats"
+}`;
 };
 
-// ─── BOOSTER PACK DEEP PROMPT ─────────────────────────────
-const PACK_DEEP_PROMPT = (info) => {
-  return `You are a trading card set analyst. A user scanned a sealed booster pack and wants to know: "What are the best pulls in this set and how much are they worth?"
-
-This is NOT a financial analysis. Do NOT tell them "most packs lose money" — they know. They want to know what's worth chasing in this set.
-
-Pack: ${info.item_name}
-Set/Product Line: ${info.style_period}
-Era: ${info.estimated_era}
-${info.search_query ? `Suggested Search: ${info.search_query}` : ""}
-
-RESEARCH THESE THINGS:
-1. Find the current retail price of this sealed product
-2. Find the TOP 5 most valuable cards in this set — search for actual sold prices on eBay, TCGPlayer, etc.
-3. Find the total number of chase-worthy cards in the set (cards worth $20+)
-4. Determine collector demand and hype level for this set
-5. Note any special variants, secret rares, or alternate arts that command premium
-
-Respond ONLY with this JSON (no markdown, no backticks):
-{
-  "pack_name": "Full set name",
-  "product_type": "Booster Pack, ETB, Booster Box, Blister, etc.",
-  "pack_price": 4.99,
-  "top_chase_value": 525,
-  "chase_card_count": 12,
-  "chase_cards": [
-    {"name": "Card Name", "value": 525, "rarity": "Showcase"},
-    {"name": "Card Name 2", "value": 459, "rarity": "Special Art Rare"},
-    {"name": "Card Name 3", "value": 410, "rarity": "Full Art"},
-    {"name": "Card Name 4", "value": 85, "rarity": "Holo Rare"},
-    {"name": "Card Name 5", "value": 45, "rarity": "Rare"}
-  ],
-  "set_label": "One of: Must-rip set, Chase-heavy set, Collector favorite, Solid set, Fan favorite, Budget-friendly, Weak chase, Legacy set",
-  "demand_level": "High, Medium, or Low",
-  "market_trend": "Rising, Stable, or Declining",
-  "insight": "ONE short confident sentence about what makes this set exciting or not. Focus on the chase cards and collector appeal — NOT expected value math.",
-  "notes": "Any context about the set — upcoming reprints, supply issues, collector sentiment"
-}
-
-RULES:
-- pack_price is retail/market price as a plain number
-- top_chase_value is the highest single card value in the set as a plain number
-- chase_card_count is the total number of cards in the set worth $20 or more
-- chase_cards should be the TOP 5 most valuable, sorted highest to lowest, with REAL sold prices
-- Be honest about card values — use actual market data
-- The insight should be about what makes the CHASE exciting or boring, not about odds or EV
-- If a set has incredible chase cards, say so enthusiastically. If a set has nothing exciting, say that too.`;
-};
-
-// ─── RIP SCORE CALCULATOR ─────────────────────────────────
-// Measures "how fire is this set" — not financial EV
-function calculateRipScore(packData) {
-  const topChase = packData?.top_chase_value || (packData?.chase_cards?.length > 0 ? Math.max(...packData.chase_cards.map(c => c.value || 0)) : 0);
-  const chaseCount = packData?.chase_card_count || packData?.chase_cards?.length || 0;
-  const demand = packData?.demand_level || "Medium";
-  const trend = packData?.market_trend || "Stable";
-
-  // Factor 1: How valuable is the best card? (0-4 points)
-  // $500+ = 4, $200+ = 3, $50+ = 2, $20+ = 1, under $20 = 0
-  const topChaseScore = topChase >= 500 ? 4 : topChase >= 200 ? 3 : topChase >= 50 ? 2 : topChase >= 20 ? 1 : 0;
-
-  // Factor 2: How many chase-worthy cards exist? (0-3 points)
-  // 10+ = 3, 5+ = 2, 2+ = 1, 0-1 = 0
-  const depthScore = chaseCount >= 10 ? 3 : chaseCount >= 5 ? 2 : chaseCount >= 2 ? 1 : 0;
-
-  // Factor 3: Market demand (0-2 points)
-  const demandScore = demand === "High" ? 2 : demand === "Medium" ? 1 : 0;
-
-  // Factor 4: Trend bonus (0-1 points)
-  const trendScore = trend?.toLowerCase().includes("rising") ? 1 : 0;
-
-  const rawScore = topChaseScore + depthScore + demandScore + trendScore;
-  const ripScore = Math.round(Math.max(1, Math.min(10, rawScore)));
-
-  let decision, decisionColor;
-  if (ripScore >= 8) { decision = "Elite chase"; decisionColor = C.buy; }
-  else if (ripScore >= 6) { decision = "Great chase cards"; decisionColor = C.accent; }
-  else if (ripScore >= 4) { decision = "Decent set"; decisionColor = C.risky; }
-  else { decision = "Weak chase"; decisionColor = C.pass; }
-
-  return { ripScore, decision, decisionColor };
-}
 
 // ─── CATEGORY TRIGGER SYSTEM ──────────────────────────────
 const CATEGORY_TRIGGERS = {
@@ -892,28 +388,12 @@ async function callDeepValuation(analysis, userExtras) {
   console.log("[RelicID] Deep valuation — calling /api/deep-scan");
   const res = await fetch("/api/deep-scan", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 4096, messages: [{ role: "user", content: DEEP_PROMPT(analysis, userExtras) }] }),
+    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2048, messages: [{ role: "user", content: DEEP_PROMPT(analysis, userExtras) }] }),
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error.message);
   const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
   return parseJson(text);
-}
-
-async function callPackAnalysis(analysis) {
-  console.log("[RelicID] Pack analysis — calling /api/deep-scan");
-  const res = await fetch("/api/deep-scan", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 4096, messages: [{ role: "user", content: PACK_DEEP_PROMPT(analysis) }] }),
-  });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
-  const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
-  const result = parseJson(text);
-  if (!result) return null;
-  // Calculate Rip Score based on chase quality
-  const rip = calculateRipScore(result);
-  return { ...result, ...rip };
 }
 
 // ─── PIN SYSTEM ────────────────────────────────────────────
@@ -1259,78 +739,6 @@ function CreditBadge({ remaining, onClick, style }) {
 
 // ─── DETAIL VIEW ───────────────────────────────────────────
 // ─── RIP SCORE CARD ───────────────────────────────────────
-function RipScoreCard({ packData }) {
-  if (!packData) return null;
-  const { ripScore, decision, decisionColor, pack_name, product_type, pack_price, top_chase_value, chase_card_count, chase_cards, set_label, insight, demand_level, market_trend, notes } = packData;
-
-  const scorePercent = (ripScore / 10) * 100;
-
-  return (
-    <div style={{ marginBottom: 20 }}>
-      {/* Main Rip Score */}
-      <div style={{ padding: 24, background: `${decisionColor}08`, borderRadius: 14, border: `2px solid ${decisionColor}40`, textAlign: "center", marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>Rip Score</div>
-        <div style={{ fontFamily: F.display, fontSize: 64, fontWeight: 700, color: decisionColor, lineHeight: 1 }}>{ripScore}<span style={{ fontSize: 24, color: C.textMuted }}>/10</span></div>
-        <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 600, color: decisionColor, marginTop: 8 }}>{decision}</div>
-        {set_label && <div style={{ fontSize: 11, fontFamily: F.mono, color: C.textDim, marginTop: 6, padding: "3px 12px", display: "inline-block", borderRadius: 4, background: C.bgCard, border: `1px solid ${C.border}` }}>{set_label}</div>}
-        {/* Score bar */}
-        <div style={{ marginTop: 16, height: 6, background: C.bg, borderRadius: 3, overflow: "hidden" }}>
-          <div style={{ width: `${scorePercent}%`, height: "100%", background: `linear-gradient(90deg, ${C.pass}, ${C.risky}, ${C.accent}, ${C.buy})`, borderRadius: 3, transition: "width 0.5s" }} />
-        </div>
-      </div>
-
-      {/* Quick Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
-        <div style={{ padding: 14, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, textAlign: "center" }}>
-          <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>Pack Price</div>
-          <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 700, color: C.text }}>${pack_price?.toFixed(2) || "?"}</div>
-        </div>
-        <div style={{ padding: 14, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, textAlign: "center" }}>
-          <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>Best Pull</div>
-          <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 700, color: C.accent }}>${top_chase_value || (chase_cards?.[0]?.value) || "?"}</div>
-        </div>
-        <div style={{ padding: 14, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, textAlign: "center" }}>
-          <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>Chase Cards</div>
-          <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 700, color: (chase_card_count || 0) >= 10 ? C.buy : (chase_card_count || 0) >= 5 ? C.accent : C.textDim }}>{chase_card_count || chase_cards?.length || "?"}</div>
-        </div>
-      </div>
-
-      {/* Chase Cards — the main event */}
-      {chase_cards?.length > 0 && (
-        <div style={{ padding: 16, background: C.bgCard, borderRadius: 10, border: `1px solid ${C.accent}30`, marginBottom: 16 }}>
-          <div style={{ fontSize: 9, fontFamily: F.mono, color: C.accent, textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Top Pulls in This Set</div>
-          {chase_cards.map((card, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < chase_cards.length - 1 ? `1px solid ${C.border}` : "none" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 24, height: 24, borderRadius: 12, background: i === 0 ? `${C.accent}20` : C.bgSurface, border: `1px solid ${i === 0 ? C.accent + "40" : C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: i === 0 ? C.accent : C.textMuted, flexShrink: 0 }}>{i + 1}</div>
-                <div>
-                  <div style={{ fontSize: 14, color: C.text, fontWeight: 600 }}>{card.name}</div>
-                  {card.rarity && <div style={{ fontSize: 11, color: C.textMuted }}>{card.rarity}</div>}
-                </div>
-              </div>
-              <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 700, color: card.value >= 100 ? C.accent : C.textDim }}>${card.value}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Insight */}
-      {insight && (
-        <div style={{ padding: "12px 16px", background: C.bgCard, borderRadius: 8, border: `1px solid ${C.border}`, marginBottom: 16, textAlign: "center" }}>
-          <div style={{ fontSize: 14, color: C.text, lineHeight: 1.5 }}>{insight}</div>
-        </div>
-      )}
-
-      {/* Demand & Trend */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        {demand_level && <div style={{ padding: "6px 14px", background: C.bgCard, borderRadius: 6, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 11, color: C.textMuted }}>Demand:</span><span style={{ fontSize: 12, fontWeight: 600, color: demand_level === "High" ? C.buy : demand_level === "Medium" ? C.risky : C.textMuted }}>{demand_level}</span></div>}
-        {market_trend && <div style={{ padding: "6px 14px", background: C.bgCard, borderRadius: 6, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 11, color: C.textMuted }}>Trend:</span><span style={{ fontSize: 12, fontWeight: 600, color: market_trend?.toLowerCase().includes("rising") ? C.success : market_trend?.toLowerCase().includes("declin") ? C.danger : C.accent }}>{market_trend?.toLowerCase().includes("rising") ? "📈" : market_trend?.toLowerCase().includes("declin") ? "📉" : "📊"} {market_trend}</span></div>}
-      </div>
-
-      {notes && <div style={{ fontSize: 12, color: C.textMuted, fontStyle: "italic", marginBottom: 16 }}>{notes}</div>}
-    </div>
-  );
-}
 
 function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScansRemaining, onShowPaywall, deepResultRef, cacheHit }) {
   const a = item.analysis;
@@ -1339,7 +747,6 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
   const objectType = a?.object_type || "Physical Object";
   const isPhysical = objectType === "Physical Object";
   const isScreen = objectType === "Screen Capture";
-  const isBoosterPack = !!a?.is_booster_pack;
 
   // Category trigger system
   const trigger = CATEGORY_TRIGGERS[a?.category];
@@ -1598,10 +1005,7 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
 
       {/* ═══ DEEP SCAN DATA ═══ */}
       <div ref={deepResultRef} style={{ scrollMarginTop: 20 }} />
-      {hasDeep && isBoosterPack && item.packData && (
-        <RipScoreCard packData={item.packData} />
-      )}
-      {hasDeep && !isBoosterPack && (
+      {hasDeep && (
         <>
           {/* ═══ HIGH-END POTENTIAL (Graded) ═══ */}
           {v?.graded_highlight && v.graded_highlight.price && (
@@ -2080,7 +1484,6 @@ export default function RelicID() {
         object_type_confidence: result.object_type_confidence || "Medium",
         object_type_note: result.object_type_note || null,
         is_unique: result.is_unique || false,
-        is_booster_pack: result.is_booster_pack || false,
       };
 
       const priceNum = askingPrice ? parseFloat(askingPrice) : null;
@@ -2145,34 +1548,9 @@ export default function RelicID() {
     setDeepScansRemaining(getDeepScanCredits());
     setDeepLoading(true);
     try {
-      // ─── BOOSTER PACK ROUTING ───
-      if (item.analysis?.is_booster_pack) {
-        const packResult = await callPackAnalysis(item.analysis);
-        const updated = { ...item, valuation: { low_estimate: packResult?.pack_price || 0, high_estimate: packResult?.pack_price || 0, demand_level: packResult?.demand_level || "Unknown", market_trend: packResult?.market_trend || "Unknown" }, packData: packResult };
-        if (scanResult?.id === item.id) setScanResult(updated);
-        if (detailItem?.id === item.id) setDetailItem(updated);
-        const newColl = collection.map(c => c.id === item.id ? updated : c);
-        setCollection(newColl);
-        await saveCollection(newColl);
-        if (item._cacheKey) await setCachedResult(item._cacheKey, updated);
-
-        // Popup for pack scan
-        setDeepScanPopup({
-          decision: packResult?.ripScore >= 6 ? "BUY" : "PASS",
-          lowVal: packResult?.pack_price,
-          highVal: packResult?.expected_value,
-          profit: null,
-          itemName: packResult?.pack_name || item.analysis?.item_name || "Pack",
-          askingPrice: item.askingPrice,
-          isPackScan: true,
-          ripScore: packResult?.ripScore,
-          packDecision: packResult?.decision,
-        });
-      } else {
-        // ─── STANDARD DEEP SCAN ───
-        const deep = await callDeepValuation(item.analysis, userExtras);
-        const fallback = { low_estimate: "N/A", high_estimate: "N/A", recent_sales: [], demand_level: "Unknown", sell_speed: "Unknown", value_factors: [], market_trend: "Unknown", where_to_sell: [], notes: "Could not parse." };
-        const valuation = deep ? { ...fallback, ...deep } : fallback;
+      const deep = await callDeepValuation(item.analysis, userExtras);
+      const fallback = { low_estimate: "N/A", high_estimate: "N/A", recent_sales: [], demand_level: "Unknown", sell_speed: "Unknown", value_factors: [], market_trend: "Unknown", where_to_sell: [], notes: "Could not parse." };
+      const valuation = deep ? { ...fallback, ...deep } : fallback;
 
         const updated = { ...item, valuation };
         if (scanResult?.id === item.id) setScanResult(updated);
@@ -2207,7 +1585,6 @@ export default function RelicID() {
           itemName: item.analysis?.item_name || "Item",
           askingPrice: askingPriceVal,
         });
-      }
     } catch (e) {
       console.error("Deep analysis error:", e);
     } finally {
