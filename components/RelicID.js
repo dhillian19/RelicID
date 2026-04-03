@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { track } from "@vercel/analytics";
 
 // ─── PROMPTS ───────────────────────────────────────────────
 // LIGHT prompt — quick ID + basic value estimate (1 API call, no web search)
@@ -922,6 +923,7 @@ function DetailView({ item, onBack, onDelete, onLoadDeep, deepLoading, deepScans
         if (navigator.share && navigator.canShare?.({ files: [file] })) {
           try {
             await navigator.share({ files: [file], text: shareText, url: "https://getrelicid.com" });
+            track("scan_shared", { method: "native", hasValue: lowVal != null });
           } catch (e) { if (e.name !== "AbortError") console.error("Share failed:", e); }
         } else {
           // Fallback: download
@@ -1678,6 +1680,7 @@ export default function RelicID() {
             const newTotal = addDeepScans(data.scans);
             setDeepScansRemaining(newTotal);
             setPurchaseMsg(`+${data.scans} Deep Scans added`);
+            track("purchase_completed", { scans: data.scans, plan: data.planId });
             setTimeout(() => setPurchaseMsg(null), 4000);
           }
         })
@@ -1707,6 +1710,7 @@ export default function RelicID() {
       });
       const data = await res.json();
       if (data.url) {
+        track("checkout_started", { plan: plan.id, scans: plan.scans });
         window.location.href = data.url;
       } else if (data.error === "Price not configured") {
         const newTotal = addDeepScans(plan.scans);
@@ -1789,6 +1793,7 @@ export default function RelicID() {
 
       await setCachedResult(cacheKey, newItem);
       setScanResult(newItem);
+      track("quick_scan", { category: analysis.category || "Unknown", confidence: analysis.confidence_percent || 0 });
       const updated = [newItem, ...collection];
       setCollection(updated);
       await saveCollection(updated);
@@ -1831,12 +1836,13 @@ export default function RelicID() {
         const profit = item.askingPrice != null && deepLow != null && deepHigh != null
           ? getFlipProfit(item.askingPrice, deepLow, deepHigh) : null;
         setDeepScanPopup({ decision, lowVal: deepLow, highVal: deepHigh, profit, itemName: item.analysis?.item_name || "Item", askingPrice: item.askingPrice });
+        track("deep_scan", { category: item.analysis?.category || "Unknown", cached: true });
         return; // Cache hit — no credit deducted
       }
     }
 
     // No cache hit — charge credit and run fresh scan
-    if (!deductDeepScan()) { setShowPaywall(true); return; }
+    if (!deductDeepScan()) { setShowPaywall(true); track("paywall_shown"); return; }
     setDeepScansRemaining(getDeepScanCredits());
     setDeepLoading(true);
     try {
@@ -1877,6 +1883,7 @@ export default function RelicID() {
           itemName: item.analysis?.item_name || "Item",
           askingPrice: askingPriceVal,
         });
+        track("deep_scan", { category: item.analysis?.category || "Unknown", cached: false });
     } catch (e) {
       console.error("Deep analysis error:", e);
     } finally {
