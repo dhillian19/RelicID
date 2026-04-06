@@ -1689,6 +1689,20 @@ export default function RelicID() {
           window.history.replaceState({}, "", window.location.pathname);
         });
     }
+
+    // ─── PROMO CREDITS (Product Hunt, etc.) ───
+    const promo = params.get("ph") || params.get("promo");
+    if (promo && !localStorage.getItem(`relicid-promo-${promo}`)) {
+      const bonusAmounts = { "true": 15, "ph": 15, "launch": 15 };
+      const bonus = bonusAmounts[promo] || 10;
+      const newTotal = addDeepScans(bonus);
+      setDeepScansRemaining(newTotal);
+      try { localStorage.setItem(`relicid-promo-${promo}`, "1"); } catch {}
+      setPurchaseMsg(`🎉 Welcome! +${bonus} free Deep Scans added`);
+      track("promo_redeemed", { code: promo, bonus });
+      setTimeout(() => setPurchaseMsg(null), 6000);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
   }, []);
 
   const hasAnyPhoto = photos.some(p => p.dataUrl);
