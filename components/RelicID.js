@@ -1847,7 +1847,7 @@ export default function RelicID() {
     setDeepLoading(true);
     try {
       const deep = await callDeepValuation(item.analysis, userExtras);
-      const fallback = { low_estimate: "N/A", high_estimate: "N/A", recent_sales: [], demand_level: "Unknown", sell_speed: "Unknown", value_factors: [], market_trend: "Unknown", where_to_sell: [], notes: "Could not parse." };
+      const fallback = { low_estimate: "N/A", high_estimate: "N/A", recent_sales: [], demand_level: "Unknown", sell_speed: "Unknown", value_factors: [], market_trend: "Unknown", where_to_sell: [], notes: "" };
       const valuation = deep ? { ...fallback, ...deep } : fallback;
 
         const updated = { ...item, valuation };
